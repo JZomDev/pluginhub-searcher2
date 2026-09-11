@@ -43,16 +43,17 @@ async function decodeJson(buf) {
 async function buildIndex(manifest, onProgress = () => {}) {
 
     const manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
+    const fileIndexes = new Map();
 
-    const contents = await Promise.all(
+    await Promise.all(
         manifestData.map(async entry => {
-            return await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
+            const parsedData = await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
+            fileIndexes.set(entry.zipname, parsedData);
+
         })
     );
 
-    const combinedObject = { ...contents.reduce((acc, curr) => ({ ...acc, ...curr }), {}) };
-
-    return combinedObject;
+    return fileIndexes;
 }
 
 class AutoMap extends Map {
@@ -196,36 +197,47 @@ class AutoMap extends Map {
                 try {
                     let re = new RegExp(value);
                     // Handle case where app.usages might not be initialized yet
-                    let usagesToSearch = (typeof app !== 'undefined' && app.usages) ? app.usages : [];
-                    if (!Array.isArray(usagesToSearch)) {
-                        usagesToSearch = Object.entries(usagesToSearch || {}).map(([k, v]) => [k, v]);
+                    let usagesToSearch = app.usages;
+
+                    /*
+
+                    {
+                      "text": "\tname = \"Toa Keris Cam\"",
+                      "plugin": "zom-keris-cam",
+                      "file": "src/main/java/com/zom/TOAKerisCamPlugin.java",
+                      "line": 39
                     }
-                    let symbolLocations = usagesToSearch.symbolLocations || new Map();
-                    for (let [sym, plugins] of usagesToSearch) {
-                        let match = re.exec(sym);
-                        if (match) {
-                            let locations = (symbolLocations && symbolLocations.get(sym)) || [];
-                            if (locations.length > 0) {
-                                for (let loc of locations) {
-                                    symbols.push(Object.freeze({
-                                        text: sym,
-                                        plugin: loc.plugin,
-                                        file: loc.file,
-                                        line: loc.line,
-                                    }));
-                                    allMatches.add(loc.plugin);
-                                }
-                            } else {
-                                for (let plugin of plugins) {
-                                    symbols.push(Object.freeze({text: sym, plugin}));
-                                    allMatches.add(plugin.plugin);
-                                }
-                            }
-                            if (match.groups) {
-                                for (let group in match.groups) {
-                                    let groupMatches = groups.get(group).get(match.groups[group]);
+
+                     */
+
+                    for (const [fileName, index] of usagesToSearch) {
+                        for (const [sym, plugins] of Object.entries(index)) {
+
+                            let match = re.exec(sym);
+                            if (match) {
+                                let locations = plugins;
+                                if (locations.length > 0) {
+                                    for (let loc of locations) {
+                                        symbols.push(Object.freeze({
+                                            text: sym,
+                                            plugin: loc.plugin,
+                                            file: loc.file,
+                                            line: loc.line,
+                                        }));
+                                        allMatches.add(loc.plugin);
+                                    }
+                                } else {
                                     for (let plugin of plugins) {
-                                        groupMatches.add(plugin)
+                                        symbols.push(Object.freeze({text: sym, plugin}));
+                                        allMatches.add(plugin.plugin);
+                                    }
+                                }
+                                if (match.groups) {
+                                    for (let group in match.groups) {
+                                        let groupMatches = groups.get(group).get(match.groups[group]);
+                                        for (let plugin of plugins) {
+                                            groupMatches.add(plugin)
+                                        }
                                     }
                                 }
                             }
@@ -323,8 +335,8 @@ class AutoMap extends Map {
 			<span class="plugin" :data-name="item">{{item}} <span class="noselect">({{getInstalls(item)}})</span></span>
 		</List>
 			<List :list="entry.symbols" name="lines of text" v-slot="{item}">
-				<a href="#" @click.prevent="openLine(item.plugin)"><code>{{item.text}}</code></a>
-				--- <span class="plugin" :data-name="item.plugin">{{item.plugin.plugin}} ({{getInstalls(item.plugin.plugin)}})</span>
+				<a href="#" @click.prevent="openLine(item)"><code>{{item.text}}</code></a>
+				--- <span class="plugin" :data-name="item.plugin">{{item.plugin}} ({{getInstalls(item.plugin)}})</span>
 			</List>
 	</div>
 </div>
