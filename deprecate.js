@@ -22,6 +22,14 @@ async function setInstalls(){
     _cachedInstalls = await req.json();
 }
 
+let _manifestData = null;
+
+async function setManifestData()
+{
+    _manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
+}
+
+
 // Decode an ArrayBuffer that may be gzip-compressed into a parsed JSON value.
 // Detects the gzip magic number (0x1f 0x8b) and decompresses in-browser via
 // DecompressionStream only when needed — so this also works transparently if the
@@ -42,12 +50,10 @@ async function decodeJson(buf) {
 
 async function buildIndex(manifest, onProgress = () => {}) {
 
-    const manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
     const fileIndexes = new Map();
     let lastModified = new Date(0);
-
-    for (let i = 0; i < manifestData.length; i++) {
-        const entry = manifestData[i];
+    for (let i = 0; i < _manifestData.length; i++) {
+        const entry = _manifestData[i];
         const url = "docs/" + entry.zipname;
 
         const response = await fetch(url);
@@ -87,6 +93,7 @@ class AutoMap extends Map {
     await setVersion();
     await setManifest();
     await setInstalls();
+    await setManifestData();
     let mf = _cachedManifest;
     let installMap = _cachedInstalls;
     document.body.addEventListener("click", async ev => {
@@ -164,17 +171,6 @@ class AutoMap extends Map {
                     let re = new RegExp(value);
                     // Handle case where app.usages might not be initialized yet
                     let usagesToSearch = app.usages;
-
-                    /*
-
-                    {
-                      "text": "\tname = \"Toa Keris Cam\"",
-                      "plugin": "zom-keris-cam",
-                      "file": "src/main/java/com/zom/TOAKerisCamPlugin.java",
-                      "line": 39
-                    }
-
-                     */
 
                     for (const [fileName, index] of usagesToSearch) {
                         for (const [sym, plugins] of Object.entries(index)) {
@@ -390,7 +386,7 @@ class AutoMap extends Map {
     // Phase 3 (index): build the searchable regex map from the decompressed content.
     app.progress.phase = "index";
     app.progress.current = 0;
-    app.progress.total = mf.jars.length;
+    app.progress.total = _manifestData.length;
     const sd2 = new Date();
     let indexedUsages = await buildIndex(mf, (count) => {
         app.progress.current = count;
@@ -398,7 +394,6 @@ class AutoMap extends Map {
     app.usages = indexedUsages;
     const differenceInMs = new Date() - sd2;
     console.log(`Indexed ${indexedUsages.length} symbols from ${mf.jars.length} plugins in ${differenceInMs}ms`);
-    app.progress.current = mf.jars.length;
     app.progress.phase = "done";
     app.progress.indexing = false;
 
