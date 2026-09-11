@@ -146,6 +146,7 @@ class AutoMap extends Map {
     };
 
     function sortPlugins(plugins) {
+        if (plugins.length <= 1) return plugins;
         plugins.sort((a, b) => (installMap[b] || 0) - (installMap[a] || 0));
         return plugins;
     }
@@ -174,7 +175,8 @@ class AutoMap extends Map {
             if (value != "" && value != "^")
             {
                 try {
-                    let re = new RegExp(value);
+                    let isLiteral = typeof value === "string" && !/[\\^$.*+?{}\[\]|()]/.test(value);
+                    let re = isLiteral ? null : new RegExp(value);
                     // Handle case where app.usages might not be initialized yet
                     let usagesToSearch = app.usages;
 
@@ -183,7 +185,7 @@ class AutoMap extends Map {
                             if (!Object.hasOwn(index, sym)) continue;
                             const plugins = index[sym];
 
-                            let match = re.exec(sym);
+                            let match = isLiteral ? sym.indexOf(value) !== -1 ? [value] : null : re.exec(sym);
                             if (match) {
                                 let locations = plugins;
                                 if (locations.length > 0) {
@@ -202,7 +204,7 @@ class AutoMap extends Map {
                                         allMatches.add(plugin.plugin);
                                     }
                                 }
-                                if (match.groups) {
+                                if (!isLiteral && match.groups) {
                                     for (let group in match.groups) {
                                         let groupMatches = groups.get(group).get(match.groups[group]);
                                         for (let plugin of plugins) {
