@@ -35,7 +35,7 @@ async function decodeJson(buf) {
         const stream = new Response(buf).body.pipeThrough(new DecompressionStream("gzip"));
         text = await new Response(stream).text();
     } else {
-        text = new TextDecoder("utf-8").decode(bytes);
+        text = new TextDecoder("utf-8").decode(buf);
     }
     return JSON.parse(text);
 }
@@ -44,15 +44,28 @@ async function buildIndex(manifest, onProgress = () => {}) {
 
     const manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
     const fileIndexes = new Map();
+    let lastModified = new Date(0);
 
-    await Promise.all(
-        manifestData.map(async entry => {
-            const parsedData = await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
-            fileIndexes.set(entry.zipname, parsedData);
+    for (let i = 0; i < manifestData.length; i++) {
+        const entry = manifestData[i];
+        const url = "docs/" + entry.zipname;
 
-        })
-    );
+        const response = await fetch(url);
+        const buf = await response.arrayBuffer();
+        const lastMod = response.headers.get("Last-Modified");
+        if (lastMod) {
+            const dt = new Date(lastMod);
+            if (!isNaN(dt) && dt > lastModified) {
+                lastModified = dt;
+            }
+        }
+        const parsedData = await decodeJson(buf);
+        fileIndexes.set(entry.zipname, parsedData);
 
+        onProgress(i + 1);
+    }
+
+    fileIndexes.lastModified = lastModified;
     return fileIndexes;
 }
 
@@ -119,56 +132,9 @@ class AutoMap extends Map {
 `,
     };
 
-    function getSplitFileNames(splits) {
-        if (!Array.isArray(splits)) return [];
-        return splits
-            .map((split) => typeof split === "string" ? split : split?.zipname)
-            .filter((name) => typeof name === "string" && name.trim().length > 0);
-    }
-
     function sortPlugins(plugins) {
         plugins.sort((a, b) => (installMap[b] || 0) - (installMap[a] || 0));
         return plugins;
-    }
-
-    async function getPluginsLastUpdated() {
-        let files = [];
-        try {
-            const splitsRes = await fetch("plugins/plugins_splits.json");
-            if (splitsRes.ok) {
-                const splits = await splitsRes.json();
-                files = getSplitFileNames(splits);
-            }
-        } catch (e) {
-            // ignore and fall back
-        }
-
-        if (files.length === 0) {
-            files = ["plugins.json"];
-        }
-
-        const dates = await Promise.all(files.map(async (name) => {
-            try {
-                const res = await fetch(`plugins/${name}`, { method: "HEAD" });
-                if (!res.ok) return null;
-                const lastModified = res.headers.get("Last-Modified");
-                if (!lastModified) return null;
-                const dt = new Date(lastModified);
-                return isNaN(dt) ? null : dt;
-            } catch (e) {
-                return null;
-            }
-        }));
-
-        const latest = dates.filter(Boolean).sort((a, b) => b - a)[0];
-        if (!latest) return "Unknown";
-        return latest.toLocaleString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
     }
 
     class Search {
@@ -441,10 +407,15 @@ class AutoMap extends Map {
         entry.regex = entry._regex;
     }
 
-    try {
-        app.lastUpdated = await getPluginsLastUpdated();
-    } catch (e) {
-        console.error(e);
+    if (app.usages.lastModified) {
+        app.lastUpdated = app.usages.lastModified.toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    } else {
         app.lastUpdated = "Unknown";
     }
 })().catch(e => console.error(e));
