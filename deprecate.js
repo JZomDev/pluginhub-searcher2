@@ -49,15 +49,15 @@ async function decodeJson(buf) {
 }
 
 async function buildIndex(manifest, onProgress = () => {}) {
-
     const fileIndexes = new Map();
     let lastModified = new Date(0);
-    for (let i = 0; i < _manifestData.length; i++) {
-        const entry = _manifestData[i];
-        const url = "docs/" + entry.zipname;
 
+    let count = 0;
+    const promises = _manifestData.map(async (entry, i) => {
+        const url = "docs/" + entry.zipname;
         const response = await fetch(url);
         const buf = await response.arrayBuffer();
+
         const lastMod = response.headers.get("Last-Modified");
         if (lastMod) {
             const dt = new Date(lastMod);
@@ -65,11 +65,14 @@ async function buildIndex(manifest, onProgress = () => {}) {
                 lastModified = dt;
             }
         }
+
         const parsedData = await decodeJson(buf);
         fileIndexes.set(entry.zipname, parsedData);
+        count++;
+        onProgress(count);
+    });
 
-        onProgress(i + 1);
-    }
+    await Promise.all(promises);
 
     fileIndexes.lastModified = lastModified;
     return fileIndexes;
