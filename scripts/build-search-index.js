@@ -271,10 +271,6 @@ async function buildIndex(manifest, bundle) {
     // Sort symbols alphabetically.
     const entries = [...out.entries()];
 
-    entries.sort(([a], [b]) =>
-        a.localeCompare(b)
-    );
-
     // Preserve the same structure as the browser version.
     entries.symbolLocations = symbolLocations;
 
