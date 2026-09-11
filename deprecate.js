@@ -71,16 +71,22 @@ async function decodeJson(buf) {
 }
 
 async function buildIndex(manifest, onProgress = () => {}) {
-
     const manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
 
-    const contents = await Promise.all(
-        manifestData.map(async entry => {
-            return await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
-        })
-    );
+    const combinedObject = {};
+    let processedCount = 0;
 
-    const combinedObject = { ...contents.reduce((acc, curr) => ({ ...acc, ...curr }), {}) };
+    // Start all fetches immediately and process them as they complete
+    const processingPromises = manifestData.map(async entry => {
+        const content = await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
+        // Process immediately as each completes, don't wait for others
+        Object.assign(combinedObject, content);
+        onProgress(++processedCount);
+        return content;
+    });
+
+    // Wait for all processing to complete
+    await Promise.all(processingPromises);
 
     return combinedObject;
 }
@@ -459,10 +465,10 @@ class AutoMap extends Map {
         entry.regex = entry._regex;
     }
 
-    try {
-        app.lastUpdated = await getPluginsLastUpdated();
-    } catch (e) {
-        console.error(e);
-        app.lastUpdated = "Unknown";
-    }
+    // try {
+    //     app.lastUpdated = await getPluginsLastUpdated();
+    // } catch (e) {
+    //     console.error(e);
+    //     app.lastUpdated = "Unknown";
+    // }
 })().catch(e => console.error(e));
