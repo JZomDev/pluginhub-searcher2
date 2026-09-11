@@ -1,5 +1,3 @@
-// Memoized fetch cache — prevents redundant network requests when this module
-// is re-imported or reloaded in the same session.
 let _cachedVersion = null;
 async function setVersion(){
     let req = await fetch("https://raw.githubusercontent.com/runelite/plugin-hub/master/runelite.version");
@@ -23,7 +21,6 @@ async function setInstalls(){
     let req = await fetch(`https://api.runelite.net/runelite-${_cachedVersion}/pluginhub`);
     _cachedInstalls = await req.json();
 }
-let fileContent = new Map();
 
 // Decode an ArrayBuffer that may be gzip-compressed into a parsed JSON value.
 // Detects the gzip magic number (0x1f 0x8b) and decompresses in-browser via
@@ -34,183 +31,58 @@ let fileContent = new Map();
 async function decodeJson(buf) {
     const bytes = new Uint8Array(buf);
     let text;
+
     if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+        // Decompress the gzip stream
         const stream = new Response(buf).body.pipeThrough(new DecompressionStream("gzip"));
-        text = await new Response(stream).text();
+        const reader = stream.getReader();
+        const chunks = [];
+
+        try {
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+        }
+        catch (err) {
+            console.error("DecompressionStream error:", err);
+        }
+        finally {
+            // console.log("DecompressionStream closed: " + text.length + " bytes");
+            reader.releaseLock();
+        }
+
+        // Combine chunks and decode once
+        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const decompressed = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+            decompressed.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        text = new TextDecoder("utf-8").decode(decompressed);
     } else {
         text = new TextDecoder("utf-8").decode(bytes);
     }
+
     return JSON.parse(text);
 }
 
-// Fetch a JSON resource that may be gzip-compressed (.gz).
-async function fetchJson(url) {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    return decodeJson(buf);
-}
-
-// Normalize both supported split-manifest formats:
-//   ["plugins_0.json.gz", ...]
-//   [{zipname: "plugins_0.json.gz", content: [...]}, ...]
-function getSplitFileNames(splits) {
-    if (!Array.isArray(splits)) return [];
-    return splits
-        .map((split) => typeof split === "string" ? split : split?.zipname)
-        .filter((name) => typeof name === "string" && name.trim().length > 0);
-}
-
-// Load the full plugin data bundle in two observable phases:
-//   1. fetch  — download each (possibly split) data file over the network
-//   2. unzip  — decompress + JSON-parse each downloaded file
-// The optional progress callbacks let the UI show which phase is running and how
-// far along it is. Returns a map of internalName -> [{filePath, content}, ...].
-async function loadPluginBundle({onFetchStart, onFetch, onUnzipStart, onUnzip} = {}) {
-    // Resolve the list of data files. Split manifests (plugins/plugins_splits.json)
-    // contain either filenames or objects with a zipname; otherwise fall back to
-    // a single plugins.json.
-    let fileNames = null;
-    try {
-        const splitsRes = await fetch("plugins/plugins_splits.json");
-        if (splitsRes.ok) {
-            const splits = await splitsRes.json();
-            fileNames = getSplitFileNames(splits);
-        }
-    } catch (e) {
-        // fall through to single-file fallback
-    }
-    if (!fileNames || fileNames.length === 0) {
-        fileNames = ["plugins.json"];
-    }
-    loadPluginBundle._splitFileNames = fileNames;
-
-    // Phase 1 (fetch): download raw bytes for every file, reporting progress as
-    // each one lands. .map preserves order so the merge below is deterministic.
-    if (onFetchStart) onFetchStart(fileNames.length);
-    let fetched = 0;
-    const buffers = await Promise.all(fileNames.map(async (name) => {
-        try {
-            const res = await fetch(`plugins/${name}`);
-            if (!res.ok) return null;
-            return await res.arrayBuffer();
-        } catch (e) {
-            // ignore individual part failures
-            return null;
-        } finally {
-            if (onFetch) onFetch(++fetched);
-        }
-    }));
-
-    // Phase 2 (unzip): decompress + parse every downloaded file, reporting progress.
-    if (onUnzipStart) onUnzipStart(buffers.length);
-    let unzipped = 0;
-    const parts = await Promise.all(buffers.map(async (buf) => {
-        try {
-            if (!buf) return null;
-            const part = await decodeJson(buf);
-            return Array.isArray(part) ? part : null;
-        } catch (e) {
-            return null;
-        } finally {
-            if (onUnzip) onUnzip(++unzipped);
-        }
-    }));
-
-    // Merge parts in order and index by internalName (same shape as before).
-    const map = Object.create(null);
-    for (const part of parts) {
-        if (!part) continue;
-        for (const p of part) {
-            if (!p || !p.internalName) continue;
-            const contents = [];
-            if (p.content) {
-                contents.push({filePath: null, content: p.content});
-            }
-            if (Array.isArray(p.files)) {
-                for (const f of p.files) {
-                    if (!f) continue;
-                    if (typeof f === "string") {
-                        contents.push({filePath: f, content: null});
-                    } else {
-                        contents.push({filePath: f.filePath || f.fileName || null, content: f.content || null});
-                    }
-                }
-            }
-            map[p.internalName] = contents;
-        }
-    }
-    return map;
-}
-
-async function getContent(user, repo, internalName, files) {
-    // Load the bundle once and share it across concurrent callers.
-    if (!getContent._bundlePromise) {
-        getContent._bundlePromise = (async () => {
-            try {
-                getContent._bundle = await loadPluginBundle();
-            } catch (e) {
-                getContent._bundle = {};
-            }
-        })();
-    }
-
-    await getContent._bundlePromise;
-
-    const bundle = getContent._bundle || {};
-    if (bundle[internalName]) {
-        fileContent.set(internalName, bundle[internalName]);
-        return true;
-    }
-    return false;
-}
-
-async function amap(limit, array, asyncMapper) {
-    let out = new Array(array.length);
-    let todo = new Array(array.length).fill(0).map((_, i) => i);
-    await Promise.all(new Array(limit).fill(0).map(async () => {
-        for (; todo.length > 0; ) {
-            let i = todo.pop();
-            out[i] = await asyncMapper(array[i]);
-        }
-    }));
-    return out;
-}
-
 async function buildIndex(manifest, onProgress = () => {}) {
-    const symbolLocations = new Map();
-    let indexedCount = 0;
-    await amap(64, manifest.jars, async (plugin) => {
-        await getContent('JZomDev', 'pluginhub-searcher', plugin.internalName);
-        const files = fileContent.get(plugin.internalName) || [];
-        for (let f of files) {
-            if (!f) continue;
-            let filePath = null;
-            let content = "";
-            if (typeof f === "string") {
-                filePath = f;
-                content = "";
-            } else {
-                filePath = f.filePath || f.fileName || null;
-                content = f.content || "";
-            }
-            const parts = content.split("\n");
-            for (let i = 0; i < parts.length; i++) {
-                let k = parts[i];
-                if (k == "") continue;
-                let locs = symbolLocations.get(k);
-                if (!locs) {
-                    symbolLocations.set(k, locs = []);
-                }
-                locs.push({plugin: plugin.internalName, file: filePath, line: i + 1});
-            }
-        }
-        indexedCount++;
-        if (indexedCount % 10 === 0) {
-            onProgress(indexedCount);
-        }
-    });
-    return symbolLocations;
+
+    const manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
+
+    const contents = await Promise.all(
+        manifestData.map(async entry => {
+            return await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
+        })
+    );
+
+    const combinedObject = { ...contents.reduce((acc, curr) => ({ ...acc, ...curr }), {}) };
+
+    return combinedObject;
 }
 
 class AutoMap extends Map {
@@ -276,13 +148,35 @@ class AutoMap extends Map {
 `,
     };
 
+    function getSplitFileNames(splits) {
+        if (!Array.isArray(splits)) return [];
+        return splits
+            .map((split) => typeof split === "string" ? split : split?.zipname)
+            .filter((name) => typeof name === "string" && name.trim().length > 0);
+    }
+
     function sortPlugins(plugins) {
         plugins.sort((a, b) => (installMap[b] || 0) - (installMap[a] || 0));
         return plugins;
     }
 
     async function getPluginsLastUpdated() {
-        const dates = await Promise.all(loadPluginBundle._splitFileNames.map(async (name) => {
+        let files = [];
+        try {
+            const splitsRes = await fetch("plugins/plugins_splits.json");
+            if (splitsRes.ok) {
+                const splits = await splitsRes.json();
+                files = getSplitFileNames(splits);
+            }
+        } catch (e) {
+            // ignore and fall back
+        }
+
+        if (files.length === 0) {
+            files = ["plugins.json"];
+        }
+
+        const dates = await Promise.all(files.map(async (name) => {
             try {
                 const res = await fetch(`plugins/${name}`, { method: "HEAD" });
                 if (!res.ok) return null;
@@ -308,16 +202,16 @@ class AutoMap extends Map {
 
     class Search {
         static numEntries = 1;
-        constructor(regex) {
+        constructor(init) {
             this.id = Search.numEntries++;
-            this._regex = regex || "";
-            this._symbolLocations = new Map();
+            this.searchType = "regex";
+            this._regex = init || "";
             this.error = "";
             this.allMatches = [];
             this.symbols = [];
             this.groups = undefined;
             this.debounceTimer = null;
-            this.tempValue = regex || "";
+            this.tempValue = this._regex;
         }
 
         set regex(value) {
@@ -331,7 +225,11 @@ class AutoMap extends Map {
             {
                 try {
                     let re = new RegExp(value);
-                    let usagesToSearch = app.usages;
+                    // Handle case where app.usages might not be initialized yet
+                    let usagesToSearch = (typeof app !== 'undefined' && app.usages) ? app.usages : [];
+                    if (!Array.isArray(usagesToSearch)) {
+                        usagesToSearch = Object.entries(usagesToSearch || {}).map(([k, v]) => [k, v]);
+                    }
                     let symbolLocations = usagesToSearch.symbolLocations || new Map();
                     for (let [sym, plugins] of usagesToSearch) {
                         let match = re.exec(sym);
@@ -456,7 +354,7 @@ class AutoMap extends Map {
 		</List>
 			<List :list="entry.symbols" name="lines of text" v-slot="{item}">
 				<a href="#" @click.prevent="openLine(item.plugin)"><code>{{item.text}}</code></a>
-				--- <span class="plugin" :data-name="item.plugin">{{item.plugin.plugin}}</span>
+				--- <span class="plugin" :data-name="item.plugin">{{item.plugin.plugin}} ({{getInstalls(item.plugin.plugin)}})</span>
 			</List>
 	</div>
 </div>
@@ -469,10 +367,20 @@ class AutoMap extends Map {
             let entries;
             try {
                 let hash = window.location.hash;
-                hash = hash.substr(1);
-                hash = atob(hash);
-                hash = JSON.parse(hash);
-                entries = hash.map(v => new Search(v));
+                if (hash)
+                {
+                    if (hash.startsWith("#search?str="))
+                    {
+                        entries = [new Search(hash.substr("#search?str=".length))];
+                    }
+                    else if (hash.startsWith("#"))
+                    {
+                        hash = hash.substr(1);
+                        hash = atob(hash);
+                        hash = JSON.parse(hash);
+                        entries = hash.map(v => new Search(v));
+                    }
+                }
             } catch (e) {
                 console.log("loading hash:", e);
             }
@@ -496,9 +404,8 @@ class AutoMap extends Map {
 	<Search v-for="entry of entries" :key="entry.id" :entry="entry"></Search>
 </div>
 <footer class="footer">
-<a href="https://github.com/JZomDev/pluginhub-searcher/commits/main">Last updated: {{lastUpdated}}</a>
-</footer>
-`,
+  <a href="https://github.com/JZomDev/pluginhub-searcher/commits/main">Last updated {{lastUpdated}}</a>
+</footer>`,
         components: {
             Search: Search.component,
         },
@@ -532,18 +439,6 @@ class AutoMap extends Map {
         },
     }).mount("#app");
 
-    // Phase 1 (fetch) + Phase 2 (unzip): download and decompress the plugin data
-    // bundle, driving the progress UI through each phase as files complete.
-    const bundle = await loadPluginBundle({
-        onFetchStart: (n) => { app.progress.phase = "fetch"; app.progress.current = 0; app.progress.total = n; },
-        onFetch: (n) => { app.progress.current = n; },
-        onUnzipStart: (n) => { app.progress.phase = "unzip"; app.progress.current = 0; app.progress.total = n; },
-        onUnzip: (n) => { app.progress.current = n; },
-    });
-    // Share the already-loaded bundle with getContent so buildIndex won't refetch.
-    getContent._bundle = bundle;
-    getContent._bundlePromise = Promise.resolve();
-
     // Phase 3 (index): build the searchable regex map from the decompressed content.
     app.progress.phase = "index";
     app.progress.current = 0;
@@ -552,8 +447,7 @@ class AutoMap extends Map {
     let indexedUsages = await buildIndex(mf, (count) => {
         app.progress.current = count;
     });
-    app.usages = [...indexedUsages];
-    app.usages.symbolLocations = indexedUsages.symbolLocations || new Map();
+    app.usages = indexedUsages;
     const differenceInMs = new Date() - sd2;
     console.log(`Indexed ${indexedUsages.length} symbols from ${mf.jars.length} plugins in ${differenceInMs}ms`);
     app.progress.current = mf.jars.length;
