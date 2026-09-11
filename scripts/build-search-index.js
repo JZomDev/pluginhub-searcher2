@@ -380,7 +380,7 @@ async function writeManifestList(list) {
             `Indexing completed in ${Date.now() - startTime}ms`
         );
 
-        var b = await writeSymbolsLocationsChunks(symbolLocations, 10);
+        var b = await writeSymbolsLocationsChunks(symbolLocations, 20);
         // Write the requested JSON file.
         // var b = await writeSymbolsLocation(symbolLocations);
 

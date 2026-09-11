@@ -22,74 +22,144 @@ async function setInstalls(){
     _cachedInstalls = await req.json();
 }
 
-// Decode an ArrayBuffer that may be gzip-compressed into a parsed JSON value.
-// Detects the gzip magic number (0x1f 0x8b) and decompresses in-browser via
-// DecompressionStream only when needed — so this also works transparently if the
-// host already applied Content-Encoding: gzip, or if the file is plain JSON.
-// Split out from fetchJson so downloading (network) and unzipping (CPU) can be
-// tracked as separate loading phases.
-async function decodeJson(buf) {
-    const bytes = new Uint8Array(buf);
-    let text;
+function createJsonWorker() {
+    const workerCode = `
+        async function decodeJson(buf) {
+            const bytes = new Uint8Array(buf);
 
-    if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
-        // Decompress the gzip stream
-        const stream = new Response(buf).body.pipeThrough(new DecompressionStream("gzip"));
-        const reader = stream.getReader();
-        const chunks = [];
+            if (bytes.length >= 2 &&
+                bytes[0] === 0x1f &&
+                bytes[1] === 0x8b) {
 
-        try {
-            while (true) {
-                const {done, value} = await reader.read();
-                if (done) break;
-                chunks.push(value);
+                const stream = new Blob([buf])
+                    .stream()
+                    .pipeThrough(new DecompressionStream("gzip"));
+
+                return new Response(stream).json();
             }
-        }
-        catch (err) {
-            console.error("DecompressionStream error:", err);
-        }
-        finally {
-            // console.log("DecompressionStream closed: " + text.length + " bytes");
-            reader.releaseLock();
+
+            return new Response(buf).json();
         }
 
-        // Combine chunks and decode once
-        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-        const decompressed = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of chunks) {
-            decompressed.set(chunk, offset);
-            offset += chunk.length;
-        }
+        self.onmessage = async (event) => {
+            try {
+                const { id, buffer } = event.data;
+                const content = await decodeJson(buffer);
 
-        text = new TextDecoder("utf-8").decode(decompressed);
-    } else {
-        text = new TextDecoder("utf-8").decode(bytes);
-    }
+                // Transfer the parsed object back to the main thread.
+                // Structured cloning handles the object for us.
+                self.postMessage({ id, content });
+            } catch (error) {
+                self.postMessage({
+                    id: event.data.id,
+                    error: error?.stack || String(error)
+                });
+            }
+        };
+    `;
 
-    return JSON.parse(text);
-}
-
-async function buildIndex(manifest, onProgress = () => {}) {
-    const manifestData = await decodeJson(await fetch("docs/manifest.json").then(r => r.arrayBuffer()));
-
-    const combinedObject = {};
-    let processedCount = 0;
-
-    // Start all fetches immediately and process them as they complete
-    const processingPromises = manifestData.map(async entry => {
-        const content = await decodeJson(await fetch("docs/" + entry.zipname).then(r => r.arrayBuffer()));
-        // Process immediately as each completes, don't wait for others
-        Object.assign(combinedObject, content);
-        onProgress(++processedCount);
-        return content;
+    const blob = new Blob([workerCode], {
+        type: "application/javascript"
     });
 
-    // Wait for all processing to complete
-    await Promise.all(processingPromises);
+    return new Worker(URL.createObjectURL(blob));
+}
+
+
+async function buildIndex(manifest, onProgress = () => {}) {
+    const manifestData = await fetch("docs/manifest.json")
+        .then(r => r.arrayBuffer())
+        .then(buf => {
+            const bytes = new Uint8Array(buf);
+
+            if (bytes.length >= 2 &&
+                bytes[0] === 0x1f &&
+                bytes[1] === 0x8b) {
+
+                const stream = new Blob([buf])
+                    .stream()
+                    .pipeThrough(new DecompressionStream("gzip"));
+
+                return new Response(stream).json();
+            }
+
+            return new Response(buf).json();
+        });
+
+    const combinedObject = {};
+
+    // Don't create 50 workers.
+    // Four is a good starting point for CPU-heavy JSON parsing.
+    const workerCount = Math.min(4, manifestData.length);
+
+    const workers = Array.from(
+        { length: workerCount },
+        createJsonWorker
+    );
+
+    let nextIndex = 0;
+    let processedCount = 0;
+
+    async function runWorker(worker) {
+        while (true) {
+            const index = nextIndex++;
+
+            if (index >= manifestData.length) {
+                break;
+            }
+
+            const entry = manifestData[index];
+
+            try {
+                const response = await fetch("docs/" + entry.zipname);
+                const buffer = await response.arrayBuffer();
+
+                const content = await new Promise((resolve, reject) => {
+                    const handler = event => {
+                        worker.removeEventListener("message", handler);
+
+                        if (event.data.error) {
+                            reject(new Error(event.data.error));
+                        } else {
+                            resolve(event.data.content);
+                        }
+                    };
+
+                    worker.addEventListener("message", handler);
+
+                    // Transfer the ArrayBuffer to the worker.
+                    // This avoids copying the potentially huge buffer.
+                    worker.postMessage(
+                        { id: index, buffer },
+                        [buffer]
+                    );
+                });
+
+                // Keys are guaranteed to be unique between files,
+                // so this is safe.
+                Object.assign(combinedObject, content);
+
+                onProgress(++processedCount);
+            } catch (error) {
+                console.error(
+                    "Failed to process " + entry.zipname,
+                    error
+                );
+            }
+        }
+    }
+
+    try {
+        await Promise.all(workers.map(runWorker));
+    } finally {
+        for (const worker of workers) {
+            worker.terminate();
+        }
+    }
 
     return combinedObject;
 }
+
 
 class AutoMap extends Map {
     constructor(factory) {
@@ -448,7 +518,7 @@ class AutoMap extends Map {
     // Phase 3 (index): build the searchable regex map from the decompressed content.
     app.progress.phase = "index";
     app.progress.current = 0;
-    app.progress.total = mf.jars.length;
+    app.progress.total = 50;
     const sd2 = new Date();
     let indexedUsages = await buildIndex(mf, (count) => {
         app.progress.current = count;
@@ -456,7 +526,6 @@ class AutoMap extends Map {
     app.usages = indexedUsages;
     const differenceInMs = new Date() - sd2;
     console.log(`Indexed ${indexedUsages.length} symbols from ${mf.jars.length} plugins in ${differenceInMs}ms`);
-    app.progress.current = mf.jars.length;
     app.progress.phase = "done";
     app.progress.indexing = false;
 
