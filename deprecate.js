@@ -94,9 +94,12 @@ class AutoMap extends Map {
 
 (async () => {
     await setVersion();
-    await setManifest();
-    await setInstalls();
-    await setManifestData();
+
+    await Promise.all([
+        setManifest(),
+        setInstalls(),
+        setManifestData(),
+    ]);
     let mf = _cachedManifest;
     let installMap = _cachedInstalls;
     document.body.addEventListener("click", async ev => {
@@ -176,24 +179,26 @@ class AutoMap extends Map {
                     let usagesToSearch = app.usages;
 
                     for (const [fileName, index] of usagesToSearch) {
-                        for (const [sym, plugins] of Object.entries(index)) {
+                        for (const sym in index) {
+                            if (!Object.hasOwn(index, sym)) continue;
+                            const plugins = index[sym];
 
                             let match = re.exec(sym);
                             if (match) {
                                 let locations = plugins;
                                 if (locations.length > 0) {
                                     for (let loc of locations) {
-                                        symbols.push(Object.freeze({
+                                        symbols.push({
                                             text: sym,
                                             plugin: loc.plugin,
                                             file: loc.file,
                                             line: loc.line,
-                                        }));
+                                        });
                                         allMatches.add(loc.plugin);
                                     }
                                 } else {
                                     for (let plugin of plugins) {
-                                        symbols.push(Object.freeze({text: sym, plugin}));
+                                        symbols.push({text: sym, plugin});
                                         allMatches.add(plugin.plugin);
                                     }
                                 }
@@ -216,19 +221,19 @@ class AutoMap extends Map {
             }
 
             this.error = error;
-            this.allMatches = Object.freeze(sortPlugins([...allMatches]));
-            this.symbols = Object.freeze(symbols);
+            this.allMatches = sortPlugins([...allMatches]);
+            this.symbols = symbols
             if (groups.size > 0) {
                 groups = [...groups.entries()].map(([name, group]) => {
                     group = [...group.entries()].map(([name, plugins]) => {
                         plugins = sortPlugins([...plugins]);
-                        return Object.freeze([name, Object.freeze(plugins)]);
+                        return [name, plugins];
                     })
                     group.sort(([, a], [, b]) => b.length - a.length)
-                    return Object.freeze([name, Object.freeze(group)]);
+                    return [name, group];
                 });
                 groups.sort(([, a], [, b]) => b.length - a.length);
-                this.groups = Object.freeze(groups);
+                this.groups = groups;
             } else {
                 this.groups = undefined;
             }
