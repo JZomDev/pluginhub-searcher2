@@ -73,4 +73,4 @@ let _cachedManifest = null;
     }
 
 
-export { getInstallCounts, getManifest, isInternalNameAllowed };
+export { getRuneliteVersion, getInstallCounts, getManifest, isInternalNameAllowed };

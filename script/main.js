@@ -1,15 +1,13 @@
 import { queryIndex, waitForIndex } from "./search-browser.js";
-import { getInstallCounts, getManifest } from "./fetcher.js";
+import { getInstallCounts } from "./fetcher.js";
 
 let InstallCounts = {};
-let Manifest = {};
 
 async function runDeprecate() {
     await waitForIndex();
 
     try {
         InstallCounts = await getInstallCounts();
-        Manifest = await getManifest();
     } catch (e) {
         console.error("Failed to fetch install counts:", e);
     }
@@ -48,11 +46,11 @@ async function runDeprecate() {
             this.$watch("entries", () => {
                 history.replaceState(undefined, undefined, "#" + btoa(JSON.stringify(this.entries.map(s => s.regex))));
 
-                if (this.entries.length == 0 || this.entries[this.entries.length - 1].regex != "") {    
+                if (this.entries.length == 0 || this.entries[this.entries.length - 1].regex !== "") {    
                     this.entries.push(new Search());
                 }
                 for (let i = this.entries.length - 2; i >= 0; i--) {
-                    if (this.entries[i].regex == "" && !this.entries[i].focused) {
+                    if (this.entries[i].regex === "" && !this.entries[i].focused) {
                         this.entries.splice(i, 1);
                     }
                 }
@@ -74,7 +72,7 @@ class Search {
 
     constructor(init) {
         this.id = Search.numEntries++;
-        this.searchType = "literal";
+        this.searchType = "regex";
         this._regex = init || "";
         this.error = "";
         this.allMatches = [];
@@ -103,7 +101,7 @@ class Search {
     async _doSearch(value) {
         clearTimeout(this._debounceTimer);
 
-        if (value === "" || value === "^") {
+        if (value === "") {
             this.error = "";
             this.allMatches = [];
             this.symbols = [];
@@ -142,7 +140,7 @@ class Search {
             this.allMatches = [];
             this.symbols = symbols;
         } catch (e) {
-            this.error = e + "";
+            this.error = e.message || e;
             console.error(e);
         }
     }

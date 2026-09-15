@@ -89,13 +89,29 @@ async function queryIndex(gzFilePath, query, manifestUrl = null) {
 
     const results = {};
     const table = STATE.stringTable;
+    const re = new RegExp(query);
+    
+    // Prevent memory exhaustion from overly broad regex patterns
+    const MAX_TOTAL_MATCHES = 500;
+    let totalMatches = 0;
+    
     for (let i = 0; i < STATE.entries.length; i++) {
         const e = STATE.entries[i];
         const content = table.substring(e.stringOffset, e.stringOffset + e.contentLength);
         const lines = content.split("\n");
         const matching = [];
         for (let j = 0; j < lines.length; j++) {
-            if (lines[j].includes(query)) matching.push({ line: j + 1, text: lines[j] });
+            const trimmed = lines[j].trim();
+            if (trimmed === '' || trimmed === '{' || trimmed === '}') {
+                continue;
+            }
+            if (re.test(lines[j])) {
+                matching.push({ line: j + 1, text: lines[j] });
+                totalMatches++;
+                // if (totalMatches > MAX_TOTAL_MATCHES) {
+                //     throw new Error(`Search results exceed maximum of ${MAX_TOTAL_MATCHES} matches. Please use a more specific search term.`);
+                // }
+            }
         }
         if (matching.length > 0) results[e.fileName] = { matches: matching, pluginName: e.pluginName };
     }
