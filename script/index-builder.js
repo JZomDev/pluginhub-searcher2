@@ -3,11 +3,16 @@ import { gzipSync } from "node:zlib";
 
 let _cachedManifest = null;
 
-async function loadManifest(manifestUrl) {
+
+async function loadManifest() {
     if (_cachedManifest) {
         return _cachedManifest;
     }
-    const req = await fetch(manifestUrl);
+
+   let version = await getVersion();
+   version = version.trim()
+    const root = "https://repo.runelite.net/plugins/";
+    const req = await fetch(`${root}manifest/${version}_full.js`);
     const buf = new DataView(await req.arrayBuffer());
     const skip = 4 + buf.getUint32(0);
     const text = new TextDecoder("utf-8").decode(new Uint8Array(buf.buffer.slice(skip)));
@@ -16,10 +21,12 @@ async function loadManifest(manifestUrl) {
 }
 
 async function isInternalNameAllowed(internalName) {
-    if (!_cachedManifest) {
-        return false;
-    }
-    return _cachedManifest.internalName && _cachedManifest.internalName[internalName] !== undefined;
+    return _cachedManifest.jars.some(item => item.internalName === internalName);
+}
+
+async function getVersion() {
+    const req = await fetch("https://raw.githubusercontent.com/runelite/plugin-hub/master/runelite.version");
+    return await req.text();
 }
 
 async function glob(pattern) {
@@ -139,10 +146,9 @@ class BinaryIndexBuilder {
         return buffer;
     }
 
-    async run(inputGlob, outputFile, outputGzFile, onProgress = () => {}, manifestUrl = null) {
-        if (manifestUrl) {
-            await loadManifest(manifestUrl);
-        }
+    async run(inputGlob, outputFile, outputGzFile, onProgress = () => {}) {
+
+        await loadManifest();
         const pluginFiles = await glob(inputGlob);
         let processed = 0;
 
