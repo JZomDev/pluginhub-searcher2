@@ -30,6 +30,13 @@ let _cachedManifest = null;
         return _cachedManifest;
     }
 
+    function isInternalNameAllowed(internalName) {
+        if (!_cachedManifest) {
+            return false;
+        }
+        return _cachedManifest.internalName && _cachedManifest.internalName[internalName] !== undefined;
+    }
+
     async function getVersion() {
         if (_cachedVersion) {
             return _cachedVersion;
@@ -75,4 +82,4 @@ let _cachedManifest = null;
     }
 
 
-export { getInstallCounts, getManifest, getVersion };
+export { getInstallCounts, getManifest, getVersion, isInternalNameAllowed };

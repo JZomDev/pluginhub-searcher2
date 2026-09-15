@@ -1,6 +1,27 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 
+let _cachedManifest = null;
+
+async function loadManifest(manifestUrl) {
+    if (_cachedManifest) {
+        return _cachedManifest;
+    }
+    const req = await fetch(manifestUrl);
+    const buf = new DataView(await req.arrayBuffer());
+    const skip = 4 + buf.getUint32(0);
+    const text = new TextDecoder("utf-8").decode(new Uint8Array(buf.buffer.slice(skip)));
+    _cachedManifest = JSON.parse(text);
+    return _cachedManifest;
+}
+
+async function isInternalNameAllowed(internalName) {
+    if (!_cachedManifest) {
+        return false;
+    }
+    return _cachedManifest.internalName && _cachedManifest.internalName[internalName] !== undefined;
+}
+
 async function glob(pattern) {
     const dir = pattern.substring(0, pattern.lastIndexOf("/"));
     const filePattern = pattern.substring(pattern.lastIndexOf("/") + 1);
@@ -118,7 +139,10 @@ class BinaryIndexBuilder {
         return buffer;
     }
 
-    async run(inputGlob, outputFile, outputGzFile, onProgress = () => {}) {
+    async run(inputGlob, outputFile, outputGzFile, onProgress = () => {}, manifestUrl = null) {
+        if (manifestUrl) {
+            await loadManifest(manifestUrl);
+        }
         const pluginFiles = await glob(inputGlob);
         let processed = 0;
 
@@ -141,6 +165,8 @@ class BinaryIndexBuilder {
             for (const plugin of data) {
                 if (!plugin.internalName || !Array.isArray(plugin.files)) continue;
                 const { internalName, files } = plugin;
+                const allowed = await isInternalNameAllowed(internalName);
+                if (!allowed) continue;
                 for (const file of files) {
                     this.addFile(internalName, file.fileName || "", file.filePath || "", file.content || "");
                 }

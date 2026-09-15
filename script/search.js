@@ -4,12 +4,24 @@ const GZ_INDEX = "index/plugins.bin.gz";
 
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0 };
 let _init = null;
+let _manifest = null;
 
-async function _initOnce(gzFilePath) {
+async function _initOnce(gzFilePath, manifestUrl = null) {
     const path = gzFilePath || GZ_INDEX;
     if (STATE.ready) return;
     if (_init) return;
     _init = (async () => {
+        if (manifestUrl) {
+            try {
+                const req = await fetch(manifestUrl);
+                const buf = new DataView(await req.arrayBuffer());
+                const skip = 4 + buf.getUint32(0);
+                const text = new TextDecoder("utf-8").decode(new Uint8Array(buf.buffer.slice(skip)));
+                _manifest = JSON.parse(text);
+            } catch (e) {
+                console.error("Failed to load manifest:", e);
+            }
+        }
         const gzData = readFileSync(path);
         const { gunzipSync } = await import("node:zlib");
         const buffer = gunzipSync(gzData);
@@ -32,6 +44,21 @@ async function _initOnce(gzFilePath) {
             const pluginName = new TextDecoder().decode(bytes.slice(p, p + pluginNameLen));
             p += pluginNameLen;
 
+            if (_manifest && _manifest.internalName && !_manifest.internalName[pluginName]) {
+                const strOff = view.getUint32(p, true);
+                p += 4;
+                const len = view.getUint32(p, true);
+                p += 4;
+                const lineCnt = view.getUint16(p, true);
+                p += 2;
+                const lineOff = [];
+                for (let j = 0; j < lineCnt; j++) {
+                    lineOff.push(view.getUint32(p, true));
+                    p += 4;
+                }
+                continue;
+            }
+
             const strOff = view.getUint32(p, true);
             p += 4;
             const len = view.getUint32(p, true);
@@ -49,7 +76,7 @@ async function _initOnce(gzFilePath) {
         const strTableOffset = view.getUint32(buffer.byteLength - 4, true);
         const stringTable = new TextDecoder().decode(bytes.slice(strTableOffset));
 
-        STATE.fileCount = fileCount;
+        STATE.fileCount = entries.length;
         STATE.entries = entries;
         STATE.stringTable = stringTable;
         STATE.ready = true;
@@ -57,8 +84,8 @@ async function _initOnce(gzFilePath) {
     await _init;
 }
 
-async function queryIndex(gzFilePath, query) {
-    await _initOnce(gzFilePath);
+async function queryIndex(gzFilePath, query, manifestUrl = null) {
+    await _initOnce(gzFilePath, manifestUrl);
 
     const results = {};
     const table = STATE.stringTable;
