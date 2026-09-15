@@ -8,30 +8,31 @@ import { dirname, join } from "node:path";
 const testDir = dirname(new URL(import.meta.url).pathname);
 const projectRoot = join(testDir, "..");
 
-const gzFilePath = join(projectRoot, "index/plugins.bin.gz");
-const pluginGlob = join(projectRoot, "plugins/plugins_*.json");
-const binFilePath = join(projectRoot, "index/plugins.bin");
+const gzFilePath = join(projectRoot, "index/plugins.bin.test.gz");
+const pluginGlob = join(projectRoot, "plugins/plugins_*.json.gz");
+const binFilePath = join(projectRoot, "index/plugins.test.bin");
 
 async function buildTestIndex() {
-    if (existsSync(gzFilePath)) {
-        return true;
-    }
-
     const builder = new BinaryIndexBuilder();
     const result = await builder.run(
         pluginGlob,
         binFilePath,
         gzFilePath,
+        true,
         (current, total) => {
-            process.stdout.write(`\rBuilding index: ${current}/${total}`);
-        }
+            console.log(`Building index: ${current}/${total}`);
+        },
+        true,  // skipIfExists: don't rebuild if index already exists
+        false  // outputBinary: don't write the .bin file, only .bin.gz
     );
-    console.log("\nIndex built successfully:", {
-        binarySize: result.binarySize,
-        gzippedSize: result.gzippedSize,
-        fileCount: result.fileCount,
-        stringTableSize: result.stringTableSize
-    });
+    if (result.fileCount > 0) {
+        console.log("\nIndex built successfully:", {
+            binarySize: result.binarySize,
+            gzippedSize: result.gzippedSize,
+            fileCount: result.fileCount,
+            stringTableSize: result.stringTableSize
+        });
+    }
     return true;
 }
 

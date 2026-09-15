@@ -37,15 +37,6 @@ let _cachedManifest = null;
         return _cachedManifest.internalName && _cachedManifest.internalName[internalName] !== undefined;
     }
 
-    async function getVersion() {
-        if (_cachedVersion) {
-            return _cachedVersion;
-        }
-        const req = await fetch("https://raw.githubusercontent.com/runelite/plugin-hub/master/runelite.version");
-        _cachedVersion = (await req.text()).trim();
-        return _cachedVersion;
-    }
-
     async function getInstallCounts(version) {
         if (_cachedInstalls) {
             return _cachedInstalls;
@@ -82,4 +73,4 @@ let _cachedManifest = null;
     }
 
 
-export { getInstallCounts, getManifest, getVersion, isInternalNameAllowed };
+export { getInstallCounts, getManifest, isInternalNameAllowed };

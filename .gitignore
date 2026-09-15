@@ -3,3 +3,4 @@
 plugins/*.gz
 index/plugins.bin
 .kilo/
+index/*test*

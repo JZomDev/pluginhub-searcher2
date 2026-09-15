@@ -1,5 +1,6 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
+import { getRuneliteVersion } from "./fetcher.js";
 
 let _cachedManifest = null;
 
@@ -9,7 +10,7 @@ async function loadManifest() {
         return _cachedManifest;
     }
 
-   let version = await getVersion();
+   let version = await getRuneliteVersion();
    version = version.trim()
     const root = "https://repo.runelite.net/plugins/";
     const req = await fetch(`${root}manifest/${version}_full.js`);
@@ -20,13 +21,13 @@ async function loadManifest() {
     return _cachedManifest;
 }
 
-async function isInternalNameAllowed(internalName) {
+async function isInternalNameAllowed(internalName, devmode) {
+    // test package is only to use zom-zigzag to speed up testing
+    if (devmode && internalName !== 'zom-zigzag')
+    {
+        return false;
+    }
     return _cachedManifest.jars.some(item => item.internalName === internalName);
-}
-
-async function getVersion() {
-    const req = await fetch("https://raw.githubusercontent.com/runelite/plugin-hub/master/runelite.version");
-    return await req.text();
 }
 
 async function glob(pattern) {
@@ -146,16 +147,29 @@ class BinaryIndexBuilder {
         return buffer;
     }
 
-    async run(inputGlob, outputFile, outputGzFile, onProgress = () => {}) {
-
+    async run(inputGlob, outputFile, outputGzFile, devmode, onProgress = () => {}, 
+              skipIfExists = false, outputBinary = true) {
+        console.log('devmode: ' + devmode)
+        
+        // Check if gz file already exists and skip if requested
+        if (skipIfExists && existsSync(outputGzFile)) {
+            console.log('Index already exists, skipping build');
+            return {
+                binarySize: 0,
+                gzippedSize: 0,
+                fileCount: 0,
+                stringTableSize: 0
+            };
+        }
+        
         await loadManifest();
         const pluginFiles = await glob(inputGlob);
+
         let processed = 0;
 
         for (const pluginFile of pluginFiles) {
             onProgress(processed, pluginFiles.length);
             let data;
-            
             // Decompress .gz files before parsing JSON
             if (pluginFile.endsWith(".gz")) {
                 const { gunzipSync } = await import("node:zlib");
@@ -171,8 +185,13 @@ class BinaryIndexBuilder {
             for (const plugin of data) {
                 if (!plugin.internalName || !Array.isArray(plugin.files)) continue;
                 const { internalName, files } = plugin;
-                const allowed = await isInternalNameAllowed(internalName);
-                if (!allowed) continue;
+                const allowed = await isInternalNameAllowed(internalName, devmode);
+                if (!allowed) 
+                {
+                    console.log("Skipping: " + plugin.internalName)
+                    continue;
+                }
+                console.log("Processing: " + plugin.internalName)
                 for (const file of files) {
                     this.addFile(internalName, file.fileName || "", file.filePath || "", file.content || "");
                 }
@@ -190,7 +209,9 @@ class BinaryIndexBuilder {
         if (!existsSync(indexDir)) mkdirSync(indexDir, { recursive: true });
         if (!existsSync(gzDir)) mkdirSync(gzDir, { recursive: true });
 
-        writeFileSync(outputFile, buffer);
+        if (outputBinary && outputFile) {
+            writeFileSync(outputFile, buffer);
+        }
         writeFileSync(outputGzFile, gzipped);
 
         return {
@@ -202,76 +223,11 @@ class BinaryIndexBuilder {
     }
 }
 
-function extractIdentifiers(line) {
-    const keywords = new Set([
-        "public", "private", "protected", "static", "final", "abstract",
-        "class", "interface", "enum", "extends", "implements", "import",
-        "package", "return", "if", "else", "for", "while", "do", "switch",
-        "case", "break", "continue", "new", "this", "super", "void",
-        "boolean", "int", "long", "double", "float", "char", "byte",
-        "short", "true", "false", "null", "override", "throws",
-        "try", "catch", "finally", "throw", "synchronized",
-        "var", "const", "let", "function", "async", "await",
-        "String", "Integer", "Long", "Double", "Float", "Boolean",
-        "Object", "List", "Map", "Set", "Collection", "Optional",
-        "Override", "Inject", "Provides", "Slf4j", "Log",
-        "ConfigGroup", "ConfigItem", "Config", "Plugin", "PluginDescriptor",
-        "PluginDependency", "PluginManager", "Client", "Widget", "WidgetItem",
-        "MenuItem", "GameObject", "NPC", "Player", "LocalPlayer",
-        "Canvas", "Graphics2D", "Color", "Font", "BasicStroke",
-        "Point", "Rectangle", "Dimension", "Insets", "Toolkit",
-        "Timer", "ScheduledExecutorService", "Executor", "Future",
-        "CompletableFuture", "AtomicInteger", "AtomicBoolean",
-        "HashMap", "ArrayList", "LinkedList", "HashSet", "TreeSet",
-        "TreeMap", "ConcurrentHashMap",
-        "ImmutableSet", "ImmutableMap", "ImmutableList",
-        "Guice", "ProvisionException",
-        "Logger", "Logging",
-        "Slf4j", "Log",
-        "Inject", "Qualifier", "Singleton", "Component",
-        "Override", "Deprecated", "SuppressWarnings",
-        "lombok", "Builder", "AllArgsConstructor", "NoArgsConstructor",
-        "Data", "ToString", "EqualsAndHashCode",
-        "Getter", "Setter"
-    ]);
-
-    const code = line
-        .replace(/\/\/.*$/, "")
-        .replace(/"[^"]*"/g, "")
-        .replace(/@\w+/g, "");
-
-    const identifiers = new Set();
-    const annotationMatch = line.match(/@(\w+)/g);
-    if (annotationMatch) {
-        for (const match of annotationMatch) {
-            const ident = match.substring(1);
-            if (ident.length >= 3) {
-                identifiers.add(ident);
-            }
-        }
-    }
-
-    let match;
-    const identifierRegex = /\b([A-Z]\w*)\b/g;
-    while ((match = identifierRegex.exec(code)) !== null) {
-        const found = match[1];
-        if (!keywords.has(found) && found !== "String" && found.length >= 3) {
-            identifiers.add(found);
-        }
-    }
-
-    const methodRegex = /\b([a-z][a-zA-Z0-9]+)\b/g;
-    while ((match = methodRegex.exec(code)) !== null) {
-        const found = match[1];
-        if (!keywords.has(found) && found.length >= 2) {
-            identifiers.add(found);
-        }
-    }
-
-    return [...identifiers];
-}
-
 export { BinaryIndexBuilder };
 
-const builder = new BinaryIndexBuilder();
-await builder.run("plugins/plugins_*.json.gz", "index/plugins.bin", "index/plugins.bin.gz");
+// Only run this when executed directly, not when imported
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+if (isMain) {
+    const builder = new BinaryIndexBuilder();
+    await builder.run("plugins/plugins_*.json.gz", "index/plugins.bin", "index/plugins.bin.gz", false);
+}

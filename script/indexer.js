@@ -1,19 +1,5 @@
 import { decodeJson } from "./parser.js";
 
-class AutoMap extends Map {
-    constructor(factory) {
-        super();
-        this.factory = factory;
-    }
-    get(key) {
-        let v = super.get(key);
-        if (v === undefined) {
-            this.set(key, (v = this.factory(key)));
-        }
-        return v;
-    }
-}
-
 async function buildIndex(manifest, manifestData, onProgress = () => {}) {
     const fileIndexes = new Map();
     let lastModified = new Date(0);
@@ -42,4 +28,4 @@ async function buildIndex(manifest, manifestData, onProgress = () => {}) {
     return fileIndexes;
 }
 
-export { AutoMap, buildIndex };
+export { buildIndex };
