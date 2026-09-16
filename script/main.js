@@ -1,4 +1,4 @@
-import { queryIndex, waitForIndex } from "./search-browser.js";
+import { queryIndex, waitForIndex, parseIndex } from "./search-browser.js";
 import { getInstallCounts } from "./fetcher.js";
 import { SearchComponent } from "./search-component.js";
 
@@ -33,10 +33,12 @@ async function runDeprecate() {
 
     const app = Vue.createApp({
         data() {
+            const indexInfo = parseIndex();
             return {
                 fetchError: null,
                 entries: entries,
                 InstallCounts: InstallCounts,
+                lastModified: indexInfo.lastModified,
             };
         },
         
@@ -46,6 +48,7 @@ async function runDeprecate() {
 </div>
 <footer class="footer">
   <a href="https://github.com/JZomDev/pluginhub-searcher/commits/main">pluginhub-searcher</a>
+  <span v-if="lastModified"> | Last updated: {{ formatDate(lastModified) }}</span>
 </footer>`,
         components: {
             Search: SearchComponent,
@@ -63,7 +66,23 @@ async function runDeprecate() {
                     }
                 }
             }, {deep: true});
-        }
+        },
+        methods: {
+            formatDate(isoString) {
+                const date = new Date(isoString);
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const month = months[date.getMonth()];
+                const day = date.getDate();
+                const year = date.getFullYear();
+                let hours = date.getHours();
+                const minutes = date.getMinutes();
+                const ampm = hours >= 12 ? "PM" : "AM";
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                const minutesStr = minutes < 10 ? "0" + minutes : minutes;
+                return `${month} ${day}, ${year}, ${hours}:${minutesStr} ${ampm}`;
+            },
+        },
     }).mount("#app");
 }
 

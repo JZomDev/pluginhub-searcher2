@@ -1,6 +1,7 @@
 const GZ_INDEX = "index/plugins.bin.gz";
+const MANIFEST = "index/plugins.bin.manifest.json";
 
-const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0 };
+const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0, lastModified: null };
 let _init = null;
 let _indexReadyResolver = null;
 
@@ -14,6 +15,14 @@ async function _initOnce() {
         const stream = new Response(buf).body.pipeThrough(new DecompressionStream("gzip"));
         const decompressed = await new Response(stream).arrayBuffer();
         _parseBuffer(decompressed);
+
+        try {
+            const manifestResp = await fetch(MANIFEST, { cache: "no-store" });
+            const manifest = await manifestResp.json();
+            STATE.lastModified = manifest.lastModified;
+        } catch (e) {
+            console.warn("Failed to fetch manifest:", e);
+        }
     })();
     await _init;
 }
@@ -115,7 +124,7 @@ async function queryIndex(query) {
 }
 
 function parseIndex() {
-    return { fileCount: STATE.fileCount, entries: STATE.entries, stringTable: STATE.stringTable };
+    return { fileCount: STATE.fileCount, entries: STATE.entries, stringTable: STATE.stringTable, lastModified: STATE.lastModified };
 }
 
 export { queryIndex, parseIndex, waitForIndex };

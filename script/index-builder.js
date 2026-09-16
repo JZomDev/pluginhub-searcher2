@@ -214,6 +214,12 @@ class BinaryIndexBuilder {
         }
         writeFileSync(outputGzFile, gzipped);
 
+        const manifest = {
+            lastModified: new Date().toISOString()
+        };
+        const manifestPath = outputGzFile.replace(/\.gz$/, ".manifest.json");
+        writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
         return {
             binarySize: buffer.length,
             gzippedSize: gzipped.length,
