@@ -1690,7 +1690,7 @@
       "shift-drop-block": "5f026d1ad6105054fd78cdba04e0aa886241055e",
       "shift-remapping": "d016397713bff633478640761363d3225c0d5c20",
       "shinigami-eyes": "0d942f63d81fff513f3864c3b0de15dc7948c133",
-      "ship-combat": "e3b4e3d67dd13c849a52d0c745ac01a4a3397f09",
+      "ship-combat": "19779f02c01699bb57043fae1fd7f6a5547f2f62",
       "ship-renamer": "5c3c27b571bb9a67b5a5b800c6b86919d909d8e8",
       "shooting-stars": "326cdfbc076a1e81bb87aa52b9e2528db06c9973",
       "shooting-stars-to-clipboard": "272da75eb5408f41e627ba000f063a7c29985518",
@@ -2352,7 +2352,7 @@
       "ironpath": "96dc43b51c6d2cf96ed179330dd7b5d85edc5af3",
       "freyjas-flora": "b270454ba76032e930a59f61fa02bb0dd9e5a70d",
       "better-item-examine": "d7ddb94c51dacb55b71e4d6cfefb955c82281017",
-      "nightlegion": "fa395286a2f9ae645e53da030009a298b14a1a11",
+      "nightlegion": "990f550b90983a36356218285b90b47e1934dd9c",
       "iron-path": "c2241dbbdf367bee5021e4f4e1cbc0d67d20279e",
       "clan-companion": "cf1b3d514b3ce43d90ffd5335688678080dcb714",
       "tree-runner": "7fcfca63828869a782fd143f7435b297d386cb42",
@@ -2539,7 +2539,10 @@
       "sidebar-manager": "6394de79d043f55e196be0461b3d88360bf240eb",
       "cursor-tick-ring": "485df0a4ac63ad129fe8532aa1c65c386fde2cdd",
       "burn-log": "ae921f0b72f8623b25ea309ddcf5f88128a16aa4",
-      "bank-tab-shortcuts": "3edcf1e3145684f5103dbfebaa8e6198d6fce64f"
+      "bank-tab-shortcuts": "3edcf1e3145684f5103dbfebaa8e6198d6fce64f",
+      "combat-vitals": "7e9eac9c07548875c4ae09b17f0813f072661cd8",
+      "friend-world-activity": "ebee8e3f8a4c30f09a7ac1499fda3cefa5876855",
+      "rshub": "6b5846921c7fb74704f8729ce25a9594d22fbd50"
     }
   }
 ]
