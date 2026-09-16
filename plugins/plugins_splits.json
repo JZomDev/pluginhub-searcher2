@@ -2288,7 +2288,7 @@
       "gridscape": "7ab29886f3f3632ecc8c158c9b7face5911bfd91",
       "group-slot-locked": "25098c9eff65a9470a7380e83c2439ba227d055b",
       "hide-ground-items": "990adbe43bc725587eebcdd4cc4678f06fdc0b44",
-      "intelligence-gathering": "75b8e51315a4c3b42a1e95499723ab84189b3692",
+      "intelligence-gathering": "34acf9c2b032530ba579b229441b2135200fa195",
       "manual-state-tracker": "d533ae804a7b6b99ae2f5f4a4dcc450abec7301d",
       "mortys-ledger": "18143064373b1208ca46389b7bf902ea679cc976",
       "onlyflips": "346f24e7738dcaa28f2d92167c457a057b352e0e",
@@ -2538,7 +2538,8 @@
       "item-respawn-timer": "a790e0579f24e075a1c735b704cbbc59f31e2816",
       "sidebar-manager": "6394de79d043f55e196be0461b3d88360bf240eb",
       "cursor-tick-ring": "485df0a4ac63ad129fe8532aa1c65c386fde2cdd",
-      "burn-log": "ae921f0b72f8623b25ea309ddcf5f88128a16aa4"
+      "burn-log": "ae921f0b72f8623b25ea309ddcf5f88128a16aa4",
+      "bank-tab-shortcuts": "3edcf1e3145684f5103dbfebaa8e6198d6fce64f"
     }
   }
 ]
