@@ -3,8 +3,6 @@ import { readFileSync } from "node:fs";
 const GZ_INDEX = "index/plugins.bin.gz";
 
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0 };
-let _init = null;
-let _manifest = null;
 
 async function _initOnce(gzFilePath, manifestUrl = null) {
     const path = gzFilePath || GZ_INDEX;
