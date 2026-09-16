@@ -309,7 +309,7 @@
       "center-skill-icons": "a0312913928c8bfaf6064750d1dac93b50a3dc8e",
       "cg-recolor": "88392fa6837f11c0e8e99bd62e6c0a0f85b98e76",
       "challenge-mode-indicator": "a9caed3f4b9e3fb005375d9bb37aeb70e53a1d79",
-      "chance-man": "c3e0864ff57f60896671d8119ce97dff422b76aa",
+      "chance-man": "aedc55ee08de68d3c49ce33c8c2b921adf7e8581",
       "chanceman-tracker-runelite-sync": "9a4559362f7eb89406011eb533947f381f196484",
       "character-export": "0386dccc0a9f200127ac8180bf231a799a06e514",
       "charge-calc": "8470b3c9d23220db0f7f912f714a81599e3512ea",
@@ -1180,7 +1180,7 @@
       "mlm-upper-level-markers": "a63e1ad9130451af0b382b87129b2e6a26a3e84a",
       "mobs-locator": "4b330b7ec218255c2ccfde3aaeaf9f23b18f42cc",
       "model-exporter": "0cfc9cd1a7203d98c973f830306a257dde1585ca",
-      "modern-chat": "7d441b1f27a77d53bfd29692bdb774ea587c56b0",
+      "modern-chat": "69d5f0b123732364752f9c6f7ca3c53df0befcd4",
       "modern-mmo-pm": "d2165c9d898c8dd7c4e7dd0cc3c4bbf9f7863d96",
       "modified-left-click-dropper": "c4ba7b701d85a7cf469733527f9cad24ad843e3a",
       "mokha-tracker": "0df4a9509836ded4a69ac5cfa023b5d01cf03dc9",
@@ -2485,7 +2485,7 @@
       "yippeebluetears": "6460ab16593a76db520c4ac08c457486ad2d3975",
       "fairy-ring-map": "95a972b26fa972c3590eb0c9375327138658a420",
       "dog-hider": "23a49f6c5803398573b4ecf7b5b87a078a9b3565",
-      "loot-finder": "c2fd0e5113269074d9e8666dcdf9e2d5e80424a5",
+      "loot-finder": "a5eb8fde5367ec75567a2f7db104e94784d08a14",
       "racecar": "4937de2c2aca6f46753164aff018c561fe9187dc",
       "chat-regex-filter": "0b333af64734afcd8c9b08e436f9a1adce45e6b5",
       "efficient-mortimer": "b2ce730e28ffa8497a1cb6661964781df642817d",
@@ -2543,7 +2543,10 @@
       "combat-vitals": "7e9eac9c07548875c4ae09b17f0813f072661cd8",
       "friend-world-activity": "ebee8e3f8a4c30f09a7ac1499fda3cefa5876855",
       "rshub": "6b5846921c7fb74704f8729ce25a9594d22fbd50",
-      "entourage": "54f500f1ff65534553d20219f266d97427ea0595"
+      "entourage": "54f500f1ff65534553d20219f266d97427ea0595",
+      "player-indicators-plus": "013b16bb6fc2c421810875cd2c41a8d870d95694",
+      "spotify-controller": "e96aec96367a85e24e8c627a4e6215c543270954",
+      "slayer-item-reminders": "3b932e676febac9f1fda9f8bef79b78b56ce0c25"
     }
   }
 ]
