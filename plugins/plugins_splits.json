@@ -958,7 +958,7 @@
       "immersive-dialogue": "176810c70f107f5da25278e47209bc2ac9cc22e0",
       "immersive-ground-markers": "2cfebd5d6f47e848339761c4dd59d38f66e7595e",
       "immersive-sound-notifications": "8cda91e0ed548bf104d1c67f8531d11b57034464",
-      "impling-finder": "123b52e98c18712891cb0635b88deb8f4b0ec7ac",
+      "impling-finder": "dfef71ef9e2f4e318b2f2f95acf7f57ebf82803d",
       "impling-saver": "76d7d001fb1517fed2359ee61c32b724440118c6",
       "impolite-slayer": "63e4c4f6ee17b0e993ec5f42ac7d628e0633ee74",
       "improved-tears-of-guthix-interface": "57e41a21ddd773812caf77f4522d8ae848b93e19",
@@ -2120,7 +2120,7 @@
       "womclanplugin": "94a09b4ce0a93d1bcf29d3b4bcddc66af1f5f411",
       "womsynctriggerscript": "b4cd32e9dbffe4e9e989c3d4d46bbc25c741608d",
       "word-of-the-day": "594f08267cb7ee3947d2ebb200e8134c556e2fa0",
-      "world-cycle": "5aa24f43e270b7f87bbebe2d3ddf4459e1be1c6b",
+      "world-cycle": "351a20bda1d7e794e6e576c3137c38295561462f",
       "world-finder": "c9ac31a2dc7f6d896eea447f36e9fc342f2a22d1",
       "world-heatmap": "e0875fa0cce5e07a5e80d066fd97dbc526632137",
       "world-hider": "c16c6c64150d69e3103dbcc194a0d5a44a4c29e6",
@@ -2372,7 +2372,7 @@
       "shades-of-morton": "00674428b93dc2a093fb1f8b2a4749265a04189a",
       "required-materials": "a60b09e0b5b702c909e4168435b364db1f5cdaad",
       "ring-break-sound": "268542de822ff4f6de0c0fecfaa5e0e0e30452f1",
-      "mathscape-calculator": "9a89d0ca86e5bc72d09d51748cae46700f92e479",
+      "mathscape-calculator": "4e14570a916d34541cf8f42d980a9cd4e630f36d",
       "world-examine": "a614ce7228f6a5531727b59a068ff2f0179ec158",
       "item-option-hider": "5375d699a8661c157c7e26b699a9c46401237c7e",
       "rainbow-inventory-tags": "c4042dbed1ec5686f101bf82551d2a5596ba37fd",
@@ -2559,7 +2559,8 @@
       "osrs-lifetime-sync": "ef17797d162459ae8f0406f37ee63d9b8fd32bc3",
       "kills-to": "b6fd6af8dcb509f850acbbcb0f4614c4a9dd330e",
       "glass-combat-logger": "bd07bd4ec6479b9bfaa6c9fa0d8bb76fd9275f17",
-      "custom-stat-layout": "16e6370e929f6dd9ed7a04970f0420f6d88081af"
+      "custom-stat-layout": "16e6370e929f6dd9ed7a04970f0420f6d88081af",
+      "agamemnon-companion": "6a6c2b705ef51aa4c4d03f55316049cc45c14968"
     }
   }
 ]
