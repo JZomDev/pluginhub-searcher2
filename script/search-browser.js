@@ -10,18 +10,26 @@ async function _initOnce() {
     if (STATE.ready) return;
     if (_init) return;
     _init = (async () => {
+        // Fetch manifest first to ensure it's available before marking ready
+        let manifest = null;
+        try {
+            const manifestResp = await fetch(MANIFEST, { cache: "no-store" });
+            manifest = await manifestResp.json();
+            STATE.lastModified = manifest.lastModified;
+        } catch (e) {
+            console.warn("Failed to fetch manifest:", e);
+        }
+
         const resp = await fetch(GZ_INDEX, { cache: "no-store" });
         const buf = await resp.arrayBuffer();
         const stream = new Response(buf).body.pipeThrough(new DecompressionStream("gzip"));
         const decompressed = await new Response(stream).arrayBuffer();
         _parseBuffer(decompressed);
 
-        try {
-            const manifestResp = await fetch(MANIFEST, { cache: "no-store" });
-            const manifest = await manifestResp.json();
-            STATE.lastModified = manifest.lastModified;
-        } catch (e) {
-            console.warn("Failed to fetch manifest:", e);
+        STATE.ready = true;
+        if (_indexReadyResolver) {
+            _indexReadyResolver();
+            _indexReadyResolver = null;
         }
     })();
     await _init;
