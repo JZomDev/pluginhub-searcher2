@@ -11,7 +11,7 @@
       "99-notifier": "4e253d9746071848698ebc4540e03b6ac3a0dc47",
       "abc-alch": "15fdb8b3338967bfb08983680dc1910addf26bbf",
       "abexs-idle-notifier": "cc5b664ead65a271be3e75df931c009b759d5747",
-      "access-denied": "ae0ed3071353db794ed27e8d4c9c1bf109f498d2",
+      "access-denied": "d625993e5feac6f3d9a5ad72f841b2e1172a9974",
       "accidental-teleport-blocker": "1299d86f16eb7b9bbea69b70c8a120e3cc8d8333",
       "account-chat-filter": "ff6896a75fa97ddf3e22b33a46c32a6059fe03dd",
       "account-data-exporter": "5518224deb626870c6a0437d89eeabdb855c7a19",
@@ -2566,7 +2566,9 @@
       "bank-tab-storage": "c0c27185ffe9c4635c1708299ec9b9cf7c5160e6",
       "bingo-brazil-chat": "10f20f50f1e43a8e6755ec5d3bd2b8cb25998a6a",
       "better-party-defence": "157a0bb63736a352a1f17785434706ba05bb1370",
-      "pb-exporter": "e950ab28f0ccdc89db3847c18da20280fd1198cf"
+      "pb-exporter": "e950ab28f0ccdc89db3847c18da20280fd1198cf",
+      "stream-chat": "e99a34663c6be195456b48fe5bf1fc4173bdfa72",
+      "signpost": "f25af2b92fc4d4c5e96a35adf6a7fc7ebed447ae"
     }
   }
 ]
