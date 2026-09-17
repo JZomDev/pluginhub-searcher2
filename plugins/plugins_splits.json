@@ -2561,11 +2561,11 @@
       "glass-combat-logger": "ede8bed56e5a58d5e1c4bbe207280acb0b17090c",
       "custom-stat-layout": "16e6370e929f6dd9ed7a04970f0420f6d88081af",
       "agamemnon-companion": "6a6c2b705ef51aa4c4d03f55316049cc45c14968",
-      "farming-discord-status": "276a9e04cc3ad30195fee5e734f66acc4e42abb0",
+      "farming-discord-status": "e9002b1a7daf64b43177cf61a0bd8a6f15313fcc",
       "duelscape-tcg": "6365432412c000e690eb16673064b92625333872",
       "bank-tab-storage": "c0c27185ffe9c4635c1708299ec9b9cf7c5160e6",
       "bingo-brazil-chat": "10f20f50f1e43a8e6755ec5d3bd2b8cb25998a6a",
-      "better-party-defence": "157a0bb63736a352a1f17785434706ba05bb1370",
+      "better-party-defence": "c87f11403e36ee039d54cac0a8b6a1ec18295462",
       "pb-exporter": "e950ab28f0ccdc89db3847c18da20280fd1198cf",
       "stream-chat": "e99a34663c6be195456b48fe5bf1fc4173bdfa72",
       "signpost": "f25af2b92fc4d4c5e96a35adf6a7fc7ebed447ae",
@@ -2578,7 +2578,9 @@
       "looting-bag-viewer": "8c939f308001ca67358048c0084590525b2c8001",
       "skill-bubbles": "785435796cb96e9749974899a4b87db750c16343",
       "spec-regen-completed": "e778bcd38fb055de6a82ab278d04a2088e295aa0",
-      "personal-space": "b14f8f09c12f38cc60f8ea5ddbf89d56eb4da6f3"
+      "personal-space": "b14f8f09c12f38cc60f8ea5ddbf89d56eb4da6f3",
+      "improved-chat": "7b5d4c69ab1433eed820d0a513a097714feb366d",
+      "firemaking-log-guard": "33ac388b49b6332b1a196a219a95b1db3f00b6f4"
     }
   }
 ]
