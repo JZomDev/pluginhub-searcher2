@@ -2496,7 +2496,7 @@
       "group-ironmen-tracker-ingame-companion": "bfb9d86e3a9f4a568cdcd195f6329573121eca38",
       "shop-restock-alert": "dbaabf533ee7ff04147e5572469f4978c6019de0",
       "harrisun-mystic-ui": "af3edee121c63bcdf1136b0baeac059b27dd7f0d",
-      "trip-eta": "2f8b86e88792e5b0b94fe88d5578176a54631a8b",
+      "trip-eta": "10d7ca32fbf0f366c1a065a92334c4ea7e3fe1b3",
       "mouseover-options": "3a1d92e643534bca080b56165038115fda0f11ec",
       "ralos-marker": "c0352770bef97d040ed94f9015ee86cdb9b0bf19",
       "playtime-logger": "8d8d0fbd91d89a2faaaa23a243a144dd47b38928",
@@ -2551,7 +2551,9 @@
       "pathscape-sync": "64d2fbde003a46a3a3097dac23a1f239df13d67e",
       "nice-day-for-fushin": "0b501d30e1bb31f8acc4ee07e3a40092d981ec26",
       "gotr-autopilot": "f13a46880c5dd53b16485598fd1feb8de4c94052",
-      "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6"
+      "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6",
+      "low-hp-alarm": "e4962452f02eac8a0625fb7310780a3fbe74d7a4",
+      "slayer-clog-check": "5a4309129454ebc00f75e6eaafa034cc9a5d7a4d"
     }
   }
 ]
