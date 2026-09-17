@@ -2389,7 +2389,7 @@
       "coffer": "e765d02af3d2e0a9e2b599b49d66b8ae9b41cac5",
       "death-message": "3b4925b6b32aca98ea7eb79f29ce7352bb622dbd",
       "gielinor-deeds": "198e82b605208bbe99de7ea57491bcee22bc0292",
-      "gok-irl-xp": "ee96b37c80902b0f87a7fe01705f406620a5590f",
+      "gok-irl-xp": "5ad18a56a63789d3bbf17d1cc8915f098c313523",
       "herb-harvest-guard": "a656ac81178f8b9e51645135f399576fe3c5a293",
       "inoculation-bracelet-notifier": "33684dba316f263739334476b94ef499a67a4bc1",
       "item-id-overlay": "4a5ee7f87c0c4c91a5828077770598ab790d9a6a",
@@ -2507,7 +2507,7 @@
       "real-trade-values": "4c328d31396838bd7163e2c7db13cf81dd56591d",
       "lookout": "6bcc4d4f16bf646f96d78e3e05a822471c1c60b5",
       "colossal-wyrm-agility": "568a6b6e7883ecf5d3b43c24f12fedcc64b1c1e2",
-      "menaphite-remedy-reminders": "4e13ad54a6754ea3e341241a32f198be88b7f425",
+      "menaphite-remedy-reminders": "61ed0bf69c755bf1c04e4d036d89519f17a7be77",
       "tithe-farm-coach": "f517e8148a0806cfec02cccad38926e122f41b8e",
       "blood-shard-notifier-plus": "e3e857dec4878014dfc6f5d144c81eae24283786",
       "tcg-session-overlay": "ca987d89d81dd90b0242b7b8b20667c4f8500434",
@@ -2571,7 +2571,8 @@
       "signpost": "f25af2b92fc4d4c5e96a35adf6a7fc7ebed447ae",
       "pvp-hud": "012d5cee25f039d9d98d6ce9c564970c90e32773",
       "osrs-loadout": "c6829d38fb8fe0cf7ae9ff4e809dbf7e6ab27b61",
-      "trailsocial": "0433002ee5a4d0dc701e0f993a9f4aaf19fa394e"
+      "trailsocial": "0433002ee5a4d0dc701e0f993a9f4aaf19fa394e",
+      "just-puggin-around": "e84cdd69c85b1b69759fce6882649f45dda84c2d"
     }
   }
 ]
