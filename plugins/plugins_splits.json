@@ -764,7 +764,7 @@
       "gamesense": "6bf8df8b8d31c81dee062095df4ca244eb2975ed",
       "gauntlet-blocker": "dda73b81659fd87ca9c453b49824947934d8eb57",
       "gauntlet-calculator": "44b74dc55b556c4b32f8daf8bf56801a2befffc1",
-      "gauntlet-chest-popup": "98802fef1e251fcf74617ca4b491e032784ef93a",
+      "gauntlet-chest-popup": "81a0de4d1510fc8b5b9c6a9b5de72d280e9a5201",
       "gauntlet-crafting": "5406ca96286c17d71118aa8bf8e11c25ca257181",
       "gauntlet-guard": "d08350153ecc9a8b551c018f2398c69e70c9510b",
       "gauntlet-history": "189e2cd1a4796791dc5ddfe2db2d0b1f9683e4a2",
@@ -2416,7 +2416,7 @@
       "exodus-bingo": "2db25c52ce851496a278acab561ec36add93abaa",
       "green-combat-achievements": "bcc29e2c778f0fc1abc3a273a6ea42fa7b895f95",
       "gielinor-safari": "229ccb8ba9567070cf0a2ff7c3dc31cbd334f657",
-      "quantscapers": "602bfa18242660dc100779431d553115f27d59eb",
+      "quantscapers": "9425d5137a283ce7ae0de54415e9cdeaab467dc7",
       "flip-goblin": "2f8c71cb61e9b4a743465db304ddcd0a45be68ce",
       "pvm-performance-tracker": "87bb0d3530ec20d77c9a5eeccde65bd1c8633202",
       "trip-tracker": "c9216d28df987db579e8e899a36477c3ac70df7b",
@@ -2506,7 +2506,7 @@
       "menu-bar-attention": "d2044d29d3d405963221fad192fca9cbd3c3b8d2",
       "real-trade-values": "4c328d31396838bd7163e2c7db13cf81dd56591d",
       "lookout": "6bcc4d4f16bf646f96d78e3e05a822471c1c60b5",
-      "colossal-wyrm-agility": "604c4a42bebb7cf822fb84a1a8a005a8337690f5",
+      "colossal-wyrm-agility": "568a6b6e7883ecf5d3b43c24f12fedcc64b1c1e2",
       "menaphite-remedy-reminders": "4e13ad54a6754ea3e341241a32f198be88b7f425",
       "tithe-farm-coach": "f517e8148a0806cfec02cccad38926e122f41b8e",
       "blood-shard-notifier-plus": "efe0c6a3cb5a7d8d7608d50f23b5bb0ca052af3e",
@@ -2550,7 +2550,8 @@
       "bestiary": "6d8d3e936c43eea7201a693a339cadf30912ae4f",
       "pathscape-sync": "64d2fbde003a46a3a3097dac23a1f239df13d67e",
       "nice-day-for-fushin": "0b501d30e1bb31f8acc4ee07e3a40092d981ec26",
-      "gotr-autopilot": "f13a46880c5dd53b16485598fd1feb8de4c94052"
+      "gotr-autopilot": "f13a46880c5dd53b16485598fd1feb8de4c94052",
+      "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6"
     }
   }
 ]
