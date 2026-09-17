@@ -1983,7 +1983,7 @@
       "transmog": "b0afe7783c844df1a9da0fafbb1cf3164b73af75",
       "transmute-hider": "1db783c01f2920813f082177574a9288ff1715b1",
       "transparant-prayers": "0e4aa6509d798230dcc698883edee308cc9f82a6",
-      "trappy-chinchompa": "6fb6bac461e378272989a7bc6bf4059fd5192934",
+      "trappy-chinchompa": "d7da8e3974bbaef1e9cbc006f81148321608d366",
       "tray-indicators": "9b95e1549b858983dc923653aa53fd79c26c3184",
       "tray-notifications": "f8f0f87cd8e3cd5fc922cbb72d12b4fe2fe47482",
       "tree-despawn-timer": "9f9eb2b35db64cb6032d9d3e713afb2a3bd89176",
@@ -2527,7 +2527,7 @@
       "nmz-regen-alert": "cc5e4ba6e560e3fcb477bafea94ae1060eecfc4a",
       "character-snapshot": "1c7255e6cfd6a1b811473e0cd1420b3c5827e5ac",
       "extinction-man": "377315551b8f4f8faa228bdb850902cf28fc8b18",
-      "gieligotchi": "0094c435165cf0a652d99f72c9a60a7d7afbf980",
+      "gieligotchi": "6861e1ed08390a655ca1318e0bc5e0ae116b7e05",
       "gielinor-compass": "58c10e26dadaf54259a140557c024e23a6ecda1e",
       "gear-composer": "95fda369d7e70a89a4c8dc64b974f4d85bfb70c4",
       "vale-totems-declutter": "af258ba632b2a765032332ad3293172ee0b458f3",
@@ -2552,7 +2552,7 @@
       "nice-day-for-fushin": "0b501d30e1bb31f8acc4ee07e3a40092d981ec26",
       "gotr-autopilot": "d8e382774f60f679926e07292903af2185782c1d",
       "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6",
-      "low-hp-alarm": "5c05b0b952b021fd16cf9976e018fbe59f7eef91",
+      "low-hp-alarm": "6725c6bb210114af13452069f8bb1877cf22e65e",
       "slayer-clog-check": "5a4309129454ebc00f75e6eaafa034cc9a5d7a4d",
       "bankless-bank": "179beb16fcf66f8bbfeb10ebe6a06c8ff9929e1f",
       "uncharged-jewellery-reminder": "ea82ab1b7a5228b8d8d635dbd4c2092214bf8e47",
@@ -2577,7 +2577,8 @@
       "forestry-tracker": "4ef6626559536f10119abc1cbf62263991a09bae",
       "looting-bag-viewer": "8c939f308001ca67358048c0084590525b2c8001",
       "skill-bubbles": "785435796cb96e9749974899a4b87db750c16343",
-      "spec-regen-completed": "e778bcd38fb055de6a82ab278d04a2088e295aa0"
+      "spec-regen-completed": "e778bcd38fb055de6a82ab278d04a2088e295aa0",
+      "personal-space": "b14f8f09c12f38cc60f8ea5ddbf89d56eb4da6f3"
     }
   }
 ]
