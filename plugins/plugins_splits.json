@@ -2553,7 +2553,8 @@
       "gotr-autopilot": "f13a46880c5dd53b16485598fd1feb8de4c94052",
       "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6",
       "low-hp-alarm": "e4962452f02eac8a0625fb7310780a3fbe74d7a4",
-      "slayer-clog-check": "5a4309129454ebc00f75e6eaafa034cc9a5d7a4d"
+      "slayer-clog-check": "5a4309129454ebc00f75e6eaafa034cc9a5d7a4d",
+      "bankless-bank": "179beb16fcf66f8bbfeb10ebe6a06c8ff9929e1f"
     }
   }
 ]
