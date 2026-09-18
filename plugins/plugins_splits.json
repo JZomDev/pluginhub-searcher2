@@ -659,7 +659,7 @@
       "equipment-inspector": "004354d5960b978c3b26126e7114a8ed86c66b81",
       "equipment-screenshot": "c43c9f322b2119a163f21175ebaf0dc36986cbea",
       "escape-crystal": "c78b789f66718470afa6590063881fc17f9c1815",
-      "escape-crystal-notify": "7038395a1c95d0a9ea0b083fd2648f2b90fab510",
+      "escape-crystal-notify": "3400515e43bb90408cb200dfe6601b3921f5375c",
       "esp32-tracker": "812ea602b1d5fd3b3c937e19f94d8ea72db0dcf3",
       "essence-pouch-health": "d18edcd6473a02c717fce6636ff386b4e82edc66",
       "essence-pouch-tracking": "b500592f5645b623af01e87c73ead1deb3d3d3a0",
@@ -2234,7 +2234,7 @@
       "bank-architect": "cff2df494878c3f8c27833fff9e0e888a55802d6",
       "collection-log-progress": "c7932f310b7621f2dd6b29db7f17f1196c069ddf",
       "world-splitter": "214f24f664fc7d62fea9198ba65507298bb3d206",
-      "groupscape": "f3000f8e9d41c59ef5167483fb1add813359efac",
+      "groupscape": "962fb0c85521a296f43837355d2efcfadfb0e9f6",
       "hcim-progression-companion": "57a82997b341aec44215b0790917f7acb06f2a24",
       "clanhq": "454abe79fa9b06801bc392ad49392ef5698c39c8",
       "buddies": "0d1cb0f07aff9a5cbb8a8e52592e88980dbafac8",
@@ -2580,7 +2580,9 @@
       "spec-regen-completed": "e778bcd38fb055de6a82ab278d04a2088e295aa0",
       "personal-space": "b14f8f09c12f38cc60f8ea5ddbf89d56eb4da6f3",
       "improved-chat": "7b5d4c69ab1433eed820d0a513a097714feb366d",
-      "firemaking-log-guard": "33ac388b49b6332b1a196a219a95b1db3f00b6f4"
+      "firemaking-log-guard": "33ac388b49b6332b1a196a219a95b1db3f00b6f4",
+      "drop-enhancer": "2ea78665737131d0f0427298961b8b9e744352e7",
+      "67-alert": "8f40e3fe0c7c4939aeffcac4e9f45f4908ec0b36"
     }
   }
 ]
