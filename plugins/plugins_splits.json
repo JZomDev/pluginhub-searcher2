@@ -1881,7 +1881,7 @@
       "tempoross-solo-tracker": "68ecc0cf6724d4a2f2d11ec1b591182075267622",
       "terpinheimercc": "c9406e83a7385f1de8a4fba1a28269de6298533c",
       "terrain-toggle": "cbb14d34b98fcd26b211d17563b860d199b79791",
-      "the-birdhouse": "e9b50f973ea9401f5f094c45d0312c5032d33df5",
+      "the-birdhouse": "cfc6cd24d6b8c9cf0b099080bf500aa4836e2a59",
       "the-gauntlet": "bf0246abf6dc04ce5541264c10e663536f9864c2",
       "theatre-of-blood-stats": "22453e7de01ca489a60f0e72d18f6cce2a35d28b",
       "thelerune-updater": "77348d445aace000e8c214ebcbb1fd30c98009f3",
@@ -2537,7 +2537,7 @@
       "three-choices": "bbb7156c4cb382db5f9337131503d2c219b6b8e6",
       "item-respawn-timer": "a790e0579f24e075a1c735b704cbbc59f31e2816",
       "sidebar-manager": "6394de79d043f55e196be0461b3d88360bf240eb",
-      "cursor-tick-ring": "485df0a4ac63ad129fe8532aa1c65c386fde2cdd",
+      "cursor-tick-ring": "985bd8886cde83b85b8e36c1d2263156247cc12a",
       "burn-log": "ae921f0b72f8623b25ea309ddcf5f88128a16aa4",
       "bank-tab-shortcuts": "3edcf1e3145684f5103dbfebaa8e6198d6fce64f",
       "combat-vitals": "7e9eac9c07548875c4ae09b17f0813f072661cd8",
@@ -2582,7 +2582,9 @@
       "improved-chat": "7b5d4c69ab1433eed820d0a513a097714feb366d",
       "firemaking-log-guard": "33ac388b49b6332b1a196a219a95b1db3f00b6f4",
       "drop-enhancer": "2ea78665737131d0f0427298961b8b9e744352e7",
-      "67-alert": "8f40e3fe0c7c4939aeffcac4e9f45f4908ec0b36"
+      "67-alert": "8f40e3fe0c7c4939aeffcac4e9f45f4908ec0b36",
+      "knight-finder": "f5e13482099fa9b198c27788d6e7c0c4ab64b5b7",
+      "set-effect-display": "46b58d3f0a6362cba1dd5647485e72ccbc11ab67"
     }
   }
 ]
