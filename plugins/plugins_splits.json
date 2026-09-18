@@ -2529,7 +2529,7 @@
       "extinction-man": "377315551b8f4f8faa228bdb850902cf28fc8b18",
       "gieligotchi": "6861e1ed08390a655ca1318e0bc5e0ae116b7e05",
       "gielinor-compass": "58c10e26dadaf54259a140557c024e23a6ecda1e",
-      "gear-composer": "95fda369d7e70a89a4c8dc64b974f4d85bfb70c4",
+      "gear-composer": "1a9e9980ef3ce468722699a11e0bf408178640a0",
       "vale-totems-declutter": "af258ba632b2a765032332ad3293172ee0b458f3",
       "detailed-boss-drop-rates": "4aae479112ea3ebd16f66dc597d07839e4b3fddd",
       "mixology-order-guard": "a8d3bc49708d3756373b9aae6b8bb052fdf87a43",
@@ -2550,7 +2550,7 @@
       "bestiary": "6d8d3e936c43eea7201a693a339cadf30912ae4f",
       "pathscape-sync": "64d2fbde003a46a3a3097dac23a1f239df13d67e",
       "nice-day-for-fushin": "0b501d30e1bb31f8acc4ee07e3a40092d981ec26",
-      "gotr-autopilot": "d8e382774f60f679926e07292903af2185782c1d",
+      "gotr-autopilot": "feb04c81d2e58bb88294ef313be3744fc57b2611",
       "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6",
       "low-hp-alarm": "6725c6bb210114af13452069f8bb1877cf22e65e",
       "slayer-clog-check": "5a4309129454ebc00f75e6eaafa034cc9a5d7a4d",
@@ -2565,7 +2565,7 @@
       "duelscape-tcg": "6365432412c000e690eb16673064b92625333872",
       "bank-tab-storage": "c0c27185ffe9c4635c1708299ec9b9cf7c5160e6",
       "bingo-brazil-chat": "10f20f50f1e43a8e6755ec5d3bd2b8cb25998a6a",
-      "better-party-defence": "c87f11403e36ee039d54cac0a8b6a1ec18295462",
+      "better-party-defence": "518c3535ee94c72a1a3cec8a8707d50d5a0c5757",
       "pb-exporter": "e950ab28f0ccdc89db3847c18da20280fd1198cf",
       "stream-chat": "e99a34663c6be195456b48fe5bf1fc4173bdfa72",
       "signpost": "f25af2b92fc4d4c5e96a35adf6a7fc7ebed447ae",
@@ -2585,7 +2585,8 @@
       "67-alert": "8f40e3fe0c7c4939aeffcac4e9f45f4908ec0b36",
       "knight-finder": "f5e13482099fa9b198c27788d6e7c0c4ab64b5b7",
       "set-effect-display": "46b58d3f0a6362cba1dd5647485e72ccbc11ab67",
-      "iron-loot-filter": "57319f0578f11c596e10bc2d0846c746f540fef6"
+      "iron-loot-filter": "57319f0578f11c596e10bc2d0846c746f540fef6",
+      "bank-scanner-utility": "afd7a7663d50e8e4881e20c01ee55d73c332cb56"
     }
   }
 ]
