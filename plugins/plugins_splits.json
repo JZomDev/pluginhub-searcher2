@@ -1224,7 +1224,7 @@
       "myipidlecrab": "5c2458b34e793214b96200ef502f5c8f177d2835",
       "mystix": "e88b3bd37b130f2ee0dba54434353bf487c3def2",
       "nail-beast-sfx": "201496385b5c78493dacacbae567c713835fba8f",
-      "named-pets": "9cc50072fa78d9b52fe36b0a830f038190fb97d3",
+      "named-pets": "3a9af994432c3e76dca2f681428e71fc0c85a426",
       "nameplates": "6c568e068e37fcefd8c18232190c93d619c4b109",
       "native-mac-notifications": "d25e6225f76aadda36ee6d8493c97d8069edec8e"
     }
@@ -2185,7 +2185,7 @@
       "bank-item-value": "720ef026964a5e3fa519a1a9e478ffaa641983f8",
       "limited-walk": "7e6822c316908b5af3662d48df9b44b4d43df468",
       "character-stats": "ee3c14f287d5739a188e679cdb92b7b18eabaa9d",
-      "zeah-rc-helper": "8c1e5682d4e4711161aec06911a26962e59c3924",
+      "zeah-rc-helper": "7850788ed0145370a736885bf1c3d282ab80b4f2",
       "lazybones": "f3f8318e9ffe2164ce768afd0f323daba556c994",
       "overheads-reworked": "97ec4c373e91b9cf44c46e10db4b279775be0768",
       "no-ge-inventory-blink": "4d50fb809843941697b0a30d92576b23339d6d75",
@@ -2553,7 +2553,7 @@
       "gotr-autopilot": "feb04c81d2e58bb88294ef313be3744fc57b2611",
       "skill-bank-organizer": "f82a0a6585c3dda6df98f847d8f070965b2e8ed6",
       "low-hp-alarm": "6725c6bb210114af13452069f8bb1877cf22e65e",
-      "slayer-clog-check": "5a4309129454ebc00f75e6eaafa034cc9a5d7a4d",
+      "slayer-clog-check": "c7d6ae854dc73f66ed494bfd7383e6687009d503",
       "bankless-bank": "179beb16fcf66f8bbfeb10ebe6a06c8ff9929e1f",
       "uncharged-jewellery-reminder": "ea82ab1b7a5228b8d8d635dbd4c2092214bf8e47",
       "osrs-lifetime-sync": "ef17797d162459ae8f0406f37ee63d9b8fd32bc3",
@@ -2586,7 +2586,8 @@
       "knight-finder": "f5e13482099fa9b198c27788d6e7c0c4ab64b5b7",
       "set-effect-display": "46b58d3f0a6362cba1dd5647485e72ccbc11ab67",
       "iron-loot-filter": "57319f0578f11c596e10bc2d0846c746f540fef6",
-      "bank-scanner-utility": "9b64b515fc7d5cf8d742599e568c0f3ccfe0f441"
+      "bank-scanner-utility": "9b64b515fc7d5cf8d742599e568c0f3ccfe0f441",
+      "contextual-log-basket": "33327d396cc69cf96b07aa4aa9157c94e3c3b82f"
     }
   }
 ]
