@@ -1059,7 +1059,7 @@
       "leechfin-fishing": "c9544fdfc96d16ebd739ef8694ca702bcd14f0a8",
       "left-click-only": "20257d7b5e2bd23412be6a680e415c021da3516f",
       "legacy-escape": "c65cb9bf948958ac54df0d60ecc16076c48b1f7e",
-      "lendingtracker": "acbe31969692e206021029f30fb37c25d9ac9abb",
+      "lendingtracker": "82498b28a931d38e378a30a858a70fa83dc9841e",
       "lennys-custom-clues": "9d1a72a8605633f89539c7d062fecfd806c22e51",
       "letterbox": "e257c644ab63cd3759efa5b6893ba08942d1cb65",
       "level-3-clues": "5dbb4c04cf409f25fb1be747d85d6abe3ea494a9",
@@ -2592,7 +2592,9 @@
       "safe-level-ups": "3f382023ec581adc6e8f4f1a286268654b40e1de",
       "valuable-drop-sound": "9c7df5387cb748a1ad67be394944322e53b7703e",
       "slayer-prep-assistant": "fc1fbcad38b859da024c03b88f4b6bf684305789",
-      "pet-growth-tracker": "a5b969f2fe890a5066418689607912079a3a181e"
+      "pet-growth-tracker": "a5b969f2fe890a5066418689607912079a3a181e",
+      "rune-tags": "c4e9458ac399b47671573139375c43921d846f21",
+      "dps-loadout-lab": "ee6eecb56cbf959d5344fad0b1024c8c0861d50c"
     }
   }
 ]
