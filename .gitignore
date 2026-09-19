@@ -1,2 +1,6 @@
 .DS_Store
 .idea/
+plugins/*.gz
+index/plugins.bin
+.kilo/
+index/*test*
