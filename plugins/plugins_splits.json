@@ -199,7 +199,7 @@
       "bingo-discord-logger": "5066f3636c5d7d79eb1d4e461d94499175c6f2ec",
       "bingo-event-automated": "2e21e6fc05acc9edd543f8eae64e530833bb3358",
       "bingo-team-helper": "fb5eaaac2eabf60c5ecb3f6c9e2f4096fae1dd0a",
-      "bingo-team-icons": "cfdb9ab76be7f4172478f851f9d8ce56ab560f14",
+      "bingo-team-icons": "23142ce85a0bf7751fc07f77d01fa4b452c1c8b0",
       "bingo-team-indicators": "cd8ef29bd67beffdf669d315aea983c65ba41f37",
       "bingoscape-companion": "5be277344648b0170710189c76b48b777f0e51bf"
     }
@@ -2594,7 +2594,9 @@
       "slayer-prep-assistant": "fc1fbcad38b859da024c03b88f4b6bf684305789",
       "pet-growth-tracker": "a5b969f2fe890a5066418689607912079a3a181e",
       "rune-tags": "c4e9458ac399b47671573139375c43921d846f21",
-      "dps-loadout-lab": "ee6eecb56cbf959d5344fad0b1024c8c0861d50c"
+      "dps-loadout-lab": "ee6eecb56cbf959d5344fad0b1024c8c0861d50c",
+      "friendsmap": "bf8b26074b76800337e5ced1ad93dd9cc2cf7d5e",
+      "hit-stats": "7bcdafb4b7f496c8e6e4008510d02c49a6719481"
     }
   }
 ]
