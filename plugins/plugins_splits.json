@@ -15208,5 +15208,11 @@
     "content": {
       "veritas": "4e96e4325c5d1425579999baf7f1e19133ca9d01"
     }
+  },
+  {
+    "zipname": "blowpipe-calculator.json",
+    "content": {
+      "blowpipe-calculator": "3d53e2d05683df5036f72998c8371a6acc3fcda7"
+    }
   }
 ]
