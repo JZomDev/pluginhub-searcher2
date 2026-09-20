@@ -1,9 +1,6 @@
 name: Run Java JAR on Schedule
 
 on:
-  schedule:
-    # Runs every 10 minutes
-    - cron: '*/10 * * * *'
   workflow_dispatch: # Allows manual triggering from the Actions tab
 
 permissions:
@@ -38,7 +35,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add . || true
           if ! git diff --cached --quiet; then
-            git commit -m "chore(search): update" || true
+            git commit -m "update searcher" || true
             git push
           else
             echo "No changes to search-index.json"
