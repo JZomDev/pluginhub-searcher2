@@ -1,0 +1,68 @@
+[
+  {
+    "zipname": "zom-afk-gotr.json",
+    "content": {
+      "zom-afk-gotr": "0349ac221dd7f17655b6052cf05c8ab4d727f736"
+    }
+  },
+  {
+    "zipname": "zom-bank-note-plugin.json",
+    "content": {
+      "zom-bank-note-plugin": "96241cfe2c654711629a2c934afe83621b1ded65"
+    }
+  },
+  {
+    "zipname": "zom-combat-level-muting.json",
+    "content": {
+      "zom-combat-level-muting": "7d4341bb9bf244f92e3ce2b59664a7fc736cee9b"
+    }
+  },
+  {
+    "zipname": "zom-con-qol.json",
+    "content": {
+      "zom-con-qol": "4b5603d615d88c082520be8ce06b778d2ecb43fa"
+    }
+  },
+  {
+    "zipname": "zom-dense-essence.json",
+    "content": {
+      "zom-dense-essence": "46e40e6f03b8e2b9d911bf441bfad4eaa1b35b36"
+    }
+  },
+  {
+    "zipname": "zom-ignore-list-updater.json",
+    "content": {
+      "zom-ignore-list-updater": "6c6f089ba4e7a2fd7294c5beeea3fceeebf3bcf6"
+    }
+  },
+  {
+    "zipname": "zom-keris-cam.json",
+    "content": {
+      "zom-keris-cam": "606238de9d02cb48e9aff49615fc1dc69200e96e"
+    }
+  },
+  {
+    "zipname": "zom-leftclick-dropper.json",
+    "content": {
+      "zom-leftclick-dropper": "4b9cf0c6a0aae967b4580f64ad6e4155e0e12c66"
+    }
+  },
+  {
+    "zipname": "zom-moleman-mode.json",
+    "content": {
+      "zom-moleman-mode": "66b8c831a3e9070181f8dadc006eecbd9cf6640d"
+    }
+  },
+  {
+    "zipname": "zom-nmz-util.json",
+    "content": {
+      "zom-nmz-util": "22e4256e3987f5f028a9d945002414cc89750146"
+    }
+  },
+  {
+    "zipname": "zom-zigzag.json",
+    "content": {
+      "zom-zigzag": "17e73676c5917bdb63fa349d0e170b9500d22146"
+    }
+  }
+]
