@@ -235,5 +235,5 @@ export { BinaryIndexBuilder };
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
     const builder = new BinaryIndexBuilder();
-    await builder.run("plugins/plugins_*.json.gz", "index/plugins.bin", "index/plugins.bin.gz", false);
+    await builder.run("plugins/plugins_*.json.gz", "plugins/plugins.bin", "plugins/plugins.bin.gz", false);
 }

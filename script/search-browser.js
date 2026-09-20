@@ -1,5 +1,5 @@
-const GZ_INDEX = "index/plugins.bin.gz";
-const MANIFEST = "index/plugins.bin.manifest.json";
+const GZ_INDEX = "plugins/plugins.bin.gz";
+const MANIFEST = "plugins/plugins.bin.manifest.json";
 
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0, lastModified: null };
 let _init = null;

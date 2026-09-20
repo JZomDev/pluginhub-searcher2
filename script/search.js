@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-const GZ_INDEX = "index/plugins.bin.gz";
+const GZ_INDEX = "plugins/plugins.bin.gz";
 
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0 };
 

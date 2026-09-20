@@ -8,9 +8,9 @@ import { dirname, join } from "node:path";
 const testDir = dirname(new URL(import.meta.url).pathname);
 const projectRoot = join(testDir, "..");
 
-const gzFilePath = join(projectRoot, "index/plugins.bin.test.gz");
+const gzFilePath = join(projectRoot, "plugins/plugins.bin.test.gz");
 const pluginGlob = join(projectRoot, "plugins/plugins_*.json.gz");
-const binFilePath = join(projectRoot, "index/plugins.test.bin");
+const binFilePath = join(projectRoot, "plugins/plugins.test.bin");
 
 async function buildTestIndex() {
     const builder = new BinaryIndexBuilder();
