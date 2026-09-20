@@ -6,13 +6,18 @@ on:
     - cron: '*/10 * * * *'
   workflow_dispatch: # Allows manual triggering from the Actions tab
 
+permissions:
+  contents: write
+
 jobs:
   run-java:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
+      - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up JDK
         uses: actions/setup-java@v4
