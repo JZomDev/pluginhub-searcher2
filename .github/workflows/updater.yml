@@ -3,7 +3,7 @@ name: Run Java JAR on Schedule
 on:
   schedule:
     # Runs every 10 minutes
-    - cron: '*/10 * * * *'
+    - cron: '*/1 * * * *'
   workflow_dispatch: # Allows manual triggering from the Actions tab
 
 permissions:
