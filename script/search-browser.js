@@ -89,6 +89,8 @@ function _parseBuffer(buffer) {
     STATE.fileCount = fileCount;
     STATE.entries = entries;
     STATE.stringTable = stringTable;
+    STATE.stringTableBytes = bytes.slice(strTableOffset);
+    STATE.stringTableLength = bytes.byteLength - strTableOffset;
     STATE.ready = true;
     if (_indexReadyResolver) {
         _indexReadyResolver();
@@ -101,6 +103,7 @@ async function queryIndex(query) {
 
     const results = {};
     const table = STATE.stringTable;
+    const tableBytes = STATE.stringTableBytes;
     const re = new RegExp(query);
     
     const MAX_TOTAL_MATCHES = 5000;
@@ -108,7 +111,8 @@ async function queryIndex(query) {
     
     for (let i = 0; i < STATE.entries.length; i++) {
         const e = STATE.entries[i];
-        const content = table.substring(e.stringOffset, e.stringOffset + e.contentLength);
+        const contentBytes = tableBytes.slice(e.stringOffset, e.stringOffset + e.contentLength);
+        const content = new TextDecoder().decode(contentBytes);
         const lines = content.split("\n");
         const matching = [];
         for (let j = 0; j < lines.length; j++) {

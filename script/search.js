@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 const GZ_INDEX = "plugins/plugins.bin.gz";
 
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0 };
+let _init, _manifest;
 
 async function _initOnce(gzFilePath, manifestUrl = null) {
     const path = gzFilePath || GZ_INDEX;
@@ -77,6 +78,8 @@ async function _initOnce(gzFilePath, manifestUrl = null) {
         STATE.fileCount = entries.length;
         STATE.entries = entries;
         STATE.stringTable = stringTable;
+        STATE.stringTableBytes = bytes.slice(strTableOffset);
+        STATE.stringTableLength = bytes.byteLength - strTableOffset;
         STATE.ready = true;
     })();
     await _init;
@@ -87,6 +90,7 @@ async function queryIndex(gzFilePath, query, manifestUrl = null) {
 
     const results = {};
     const table = STATE.stringTable;
+    const tableBytes = STATE.stringTableBytes;
     const re = new RegExp(query);
     
     // Prevent memory exhaustion from overly broad regex patterns
@@ -95,7 +99,8 @@ async function queryIndex(gzFilePath, query, manifestUrl = null) {
     
     for (let i = 0; i < STATE.entries.length; i++) {
         const e = STATE.entries[i];
-        const content = table.substring(e.stringOffset, e.stringOffset + e.contentLength);
+        const contentBytes = tableBytes.slice(e.stringOffset, e.stringOffset + e.contentLength);
+        const content = new TextDecoder().decode(contentBytes);
         const lines = content.split("\n");
         const matching = [];
         for (let j = 0; j < lines.length; j++) {
@@ -120,4 +125,8 @@ function parseIndex() {
     return { fileCount: STATE.fileCount, entries: STATE.entries, stringTable: STATE.stringTable };
 }
 
-export { queryIndex, parseIndex };
+export { queryIndex, parseIndex, buildTestIndex };
+
+async function buildTestIndex() {}
+
+globalThis.buildTestIndex = buildTestIndex;
