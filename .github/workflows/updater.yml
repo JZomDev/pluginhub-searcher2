@@ -23,7 +23,7 @@ jobs:
           java-version: '17'      # Change to your required Java version (e.g., 11, 17, 21)
 
       - name: Run JAR file
-        run: java -jar HubSearcher-all.jar ./plugins/commits ./plugins ./plugins/commits
+        run: java -jar HubSearcher-all.jar ./plugins/data ./plugins ./plugins ./plugins/data
 
         # If your JAR needs environment variables or arguments:
         # env:
