@@ -1,5 +1,3 @@
-import { getPluginName, getInstalls } from './utils.js';
-
 const SearchComponent = {
     props: ["entry", "installCounts"],
     data() {

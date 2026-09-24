@@ -1,4 +1,5 @@
 const root = "https://repo.runelite.net/plugins/";
+const textDecoder = new TextDecoder();
 
 let _cachedInstalls = null;
 let _cachedVersion = null;
@@ -23,7 +24,7 @@ async function getManifest(version) {
     const req = await fetch(`${root}manifest/${version}_full.js`);
     const buf = new DataView(await req.arrayBuffer());
     const skip = 4 + buf.getUint32(0);
-    const text = new TextDecoder("utf-8").decode(new Uint8Array(buf.buffer.slice(skip)));
+    const text = textDecoder.decode(new Uint8Array(buf.buffer.slice(skip)));
     _cachedManifest = JSON.parse(text);
     return _cachedManifest;
 }
