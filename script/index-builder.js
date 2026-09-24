@@ -2,6 +2,8 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from 
 import { gzipSync } from "node:zlib";
 import { getRuneliteVersion } from "./fetcher.js";
 
+const textDecoder = new TextDecoder();
+
 let _cachedManifest = null;
 
 
@@ -16,7 +18,7 @@ async function loadManifest() {
     const req = await fetch(`${root}manifest/${version}_full.js`);
     const buf = new DataView(await req.arrayBuffer());
     const skip = 4 + buf.getUint32(0);
-    const text = new TextDecoder("utf-8").decode(new Uint8Array(buf.buffer.slice(skip)));
+    const text = textDecoder.decode(new Uint8Array(buf.buffer.slice(skip)));
     _cachedManifest = JSON.parse(text);
     return _cachedManifest;
 }

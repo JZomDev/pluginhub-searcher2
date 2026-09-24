@@ -4,6 +4,7 @@ const GZ_INDEX = "plugins/plugins.bin.gz";
 
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0 };
 let _init, _manifest;
+const textDecoder = new TextDecoder();
 
 async function _initOnce(gzFilePath, manifestUrl = null) {
     const path = gzFilePath || GZ_INDEX;
@@ -35,28 +36,28 @@ async function _initOnce(gzFilePath, manifestUrl = null) {
         for (let i = 0; i < fileCount; i++) {
             const fileNameLen = view.getUint16(p, true);
             p += 2;
-            const fileName = new TextDecoder().decode(bytes.slice(p, p + fileNameLen));
+            const fileName = textDecoder.decode(bytes.slice(p, p + fileNameLen));
             p += fileNameLen;
 
             const pluginNameLen = view.getUint16(p, true);
             p += 2;
-            const pluginName = new TextDecoder().decode(bytes.slice(p, p + pluginNameLen));
+            const pluginName = textDecoder.decode(bytes.slice(p, p + pluginNameLen));
             p += pluginNameLen;
 
-            if (_manifest && _manifest.internalName && !_manifest.internalName[pluginName]) {
-                const strOff = view.getUint32(p, true);
-                p += 4;
-                const len = view.getUint32(p, true);
-                p += 4;
-                const lineCnt = view.getUint16(p, true);
-                p += 2;
-                const lineOff = [];
-                for (let j = 0; j < lineCnt; j++) {
-                    lineOff.push(view.getUint32(p, true));
-                    p += 4;
-                }
-                continue;
-            }
+            // if (_manifest && _manifest.internalName && !_manifest.internalName[pluginName]) {
+            //     const strOff = view.getUint32(p, true);
+            //     p += 4;
+            //     const len = view.getUint32(p, true);
+            //     p += 4;
+            //     const lineCnt = view.getUint16(p, true);
+            //     p += 2;
+            //     const lineOff = [];
+            //     for (let j = 0; j < lineCnt; j++) {
+            //         lineOff.push(view.getUint32(p, true));
+            //         p += 4;
+            //     }
+            //     continue;
+            // }
 
             const strOff = view.getUint32(p, true);
             p += 4;
@@ -73,7 +74,7 @@ async function _initOnce(gzFilePath, manifestUrl = null) {
         }
 
         const strTableOffset = view.getUint32(buffer.byteLength - 4, true);
-        const stringTable = new TextDecoder().decode(bytes.slice(strTableOffset));
+        const stringTable = textDecoder.decode(bytes.slice(strTableOffset));
 
         STATE.fileCount = entries.length;
         STATE.entries = entries;
@@ -89,7 +90,6 @@ async function queryIndex(gzFilePath, query, manifestUrl = null) {
     await _initOnce(gzFilePath, manifestUrl);
 
     const results = {};
-    const table = STATE.stringTable;
     const tableBytes = STATE.stringTableBytes;
     const re = new RegExp(query);
     
@@ -100,7 +100,7 @@ async function queryIndex(gzFilePath, query, manifestUrl = null) {
     for (let i = 0; i < STATE.entries.length; i++) {
         const e = STATE.entries[i];
         const contentBytes = tableBytes.slice(e.stringOffset, e.stringOffset + e.contentLength);
-        const content = new TextDecoder().decode(contentBytes);
+        const content = textDecoder.decode(contentBytes);
         const lines = content.split("\n");
         const matching = [];
         for (let j = 0; j < lines.length; j++) {
