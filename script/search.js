@@ -44,21 +44,6 @@ async function _initOnce(gzFilePath, manifestUrl = null) {
             const pluginName = textDecoder.decode(bytes.slice(p, p + pluginNameLen));
             p += pluginNameLen;
 
-            // if (_manifest && _manifest.internalName && !_manifest.internalName[pluginName]) {
-            //     const strOff = view.getUint32(p, true);
-            //     p += 4;
-            //     const len = view.getUint32(p, true);
-            //     p += 4;
-            //     const lineCnt = view.getUint16(p, true);
-            //     p += 2;
-            //     const lineOff = [];
-            //     for (let j = 0; j < lineCnt; j++) {
-            //         lineOff.push(view.getUint32(p, true));
-            //         p += 4;
-            //     }
-            //     continue;
-            // }
-
             const strOff = view.getUint32(p, true);
             p += 4;
             const len = view.getUint32(p, true);

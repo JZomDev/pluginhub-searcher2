@@ -111,15 +111,6 @@ class Search {
             clearTimeout(this._debounceTimer);
             this._lastSearchValue = this._regex;
             this._performSearch(this._regex);
-
-            // // If index is ready, search immediately; otherwise wait for it
-            // if (Search._indexReady) {
-            // } else {
-            //     // Defer search until index is ready
-            //     this._deferredSearch = () => this._performSearch(this._regex);
-            //     Search._pendingSearches = Search._pendingSearches || [];
-            //     Search._pendingSearches.push(this._deferredSearch);
-            // }
         }
     }
 
