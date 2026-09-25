@@ -13,14 +13,14 @@ async function _initOnce() {
         // Fetch manifest first to ensure it's available before marking ready
         let manifest = null;
         try {
-            const manifestResp = await fetch(MANIFEST, { cache: "no-store" });
+            const manifestResp = await fetch(MANIFEST);
             manifest = await manifestResp.json();
             STATE.lastModified = manifest.lastModified;
         } catch (e) {
             console.warn("Failed to fetch manifest:", e);
         }
 
-        const resp = await fetch(GZ_INDEX, { cache: "no-store" });
+        const resp = await fetch(GZ_INDEX);
         const buf = await resp.arrayBuffer();
         const stream = new Response(buf).body.pipeThrough(new DecompressionStream("gzip"));
         const decompressed = await new Response(stream).arrayBuffer();
@@ -102,7 +102,6 @@ async function queryIndex(query) {
     await _initOnce();
 
     const results = {};
-    const table = STATE.stringTable;
     const tableBytes = STATE.stringTableBytes;
     const re = new RegExp(query);
     
