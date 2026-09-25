@@ -4,7 +4,7 @@ const MANIFEST = "plugins/plugins.bin.manifest.json";
 const STATE = { ready: false, entries: [], stringTable: "", fileCount: 0, lastModified: null };
 let _init = null;
 let _indexReadyResolver = null;
-
+const textDecoder = new TextDecoder();
 
 async function _initOnce() {
     if (STATE.ready) return;
@@ -61,12 +61,12 @@ function _parseBuffer(buffer) {
     for (let i = 0; i < fileCount; i++) {
         const fileNameLen = view.getUint16(p, true);
         p += 2;
-        const fileName = new TextDecoder().decode(bytes.slice(p, p + fileNameLen));
+        const fileName = textDecoder.decode(bytes.slice(p, p + fileNameLen));
         p += fileNameLen;
 
         const pluginNameLen = view.getUint16(p, true);
         p += 2;
-        const pluginName = new TextDecoder().decode(bytes.slice(p, p + pluginNameLen));
+        const pluginName = textDecoder.decode(bytes.slice(p, p + pluginNameLen));
         p += pluginNameLen;
 
         const strOff = view.getUint32(p, true);
@@ -84,7 +84,7 @@ function _parseBuffer(buffer) {
     }
 
     const strTableOffset = view.getUint32(bytes.byteLength - 4, true);
-    const stringTable = new TextDecoder().decode(bytes.slice(strTableOffset));
+    const stringTable = textDecoder.decode(bytes.slice(strTableOffset));
 
     STATE.fileCount = fileCount;
     STATE.entries = entries;
@@ -111,7 +111,7 @@ async function queryIndex(query) {
     for (let i = 0; i < STATE.entries.length; i++) {
         const e = STATE.entries[i];
         const contentBytes = tableBytes.slice(e.stringOffset, e.stringOffset + e.contentLength);
-        const content = new TextDecoder().decode(contentBytes);
+        const content = textDecoder.decode(contentBytes);
         const lines = content.split("\n");
         const matching = [];
         for (let j = 0; j < lines.length; j++) {
