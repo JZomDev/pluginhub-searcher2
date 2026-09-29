@@ -3,3 +3,4 @@
 .kilo/
 plugins/plugins.bin
 plugins/plugins.bin.manifest.json
+plugins/manifest.json
