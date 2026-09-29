@@ -8,10 +8,12 @@ let _init;
 const textDecoder = new TextDecoder();
 
 async function loadConcatenatedGzData(indexJsonPath) {
+    //console.log("[SEARCH-NODE] Starting to load concatenated gz data from", indexJsonPath);
     const pluginsDir = indexJsonPath.substring(0, indexJsonPath.lastIndexOf("/"));
     
     const indexData = JSON.parse(readFileSync(indexJsonPath, "utf-8"));
     const sortedChunks = indexData.splits.sort((a, b) => a.index - b.index);
+    //console.log("[SEARCH-NODE] Found", sortedChunks.length, "chunk files to load");
     
     let totalSize = 0;
     const chunkBuffers = [];
@@ -22,6 +24,7 @@ async function loadConcatenatedGzData(indexJsonPath) {
             : join(pluginsDir, chunk.file);
         
         if (existsSync(chunkPath)) {
+            //console.log("[SEARCH-NODE] Loading chunk:", chunkPath);
             const buf = readFileSync(chunkPath);
             chunkBuffers.push(buf);
             totalSize += buf.length;
@@ -30,21 +33,28 @@ async function loadConcatenatedGzData(indexJsonPath) {
         }
     }
     
+    //console.log("[SEARCH-NODE] Loaded", chunkBuffers.length, "chunks, total size:", totalSize);
     return Buffer.concat(chunkBuffers, totalSize);
 }
 
 async function parseGzData(gzData) {
+    //console.log("[SEARCH-NODE] Starting to parse gz data, size:", gzData.byteLength);
     const zlib = await import("node:zlib");
     const buffer = zlib.gunzipSync(gzData);
+    //console.log("[SEARCH-NODE] Decompressed to", buffer.byteLength, "bytes");
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
     let p = 0;
     const fileCount = view.getUint32(p, true);
     p += 4;
+    //console.log("[SEARCH-NODE] File count:", fileCount);
 
     const entries = [];
     for (let i = 0; i < fileCount; i++) {
+        if (i % 1000 === 0) {
+            //console.log("[SEARCH-NODE] Parsing entry", i, "of", fileCount);
+        }
         const fileNameLen = view.getUint16(p, true);
         p += 2;
         const fileName = textDecoder.decode(bytes.slice(p, p + fileNameLen));
@@ -78,6 +88,7 @@ async function parseGzData(gzData) {
     STATE.stringTableBytes = bytes.slice(strTableOffset);
     STATE.stringTableLength = bytes.byteLength - strTableOffset;
     STATE.ready = true;
+    //console.log("[SEARCH-NODE] Parse complete:", entries.length, "entries loaded");
 }
 
 async function _initOnce(gzFilePath, manifestUrl = null) {

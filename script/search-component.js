@@ -1,5 +1,16 @@
 const SearchComponent = {
     props: ["entry", "installCounts"],
+    mounted() {
+        //console.log("[COMPONENT] Mounted with entry:", this.entry?.regex, "symbols count:", this.entry?.symbols?.length);
+        try {
+            // Test computed properties to catch any errors
+            const pc = this.pluginCount;
+            const lc = this.lineCount;
+            //console.log("[COMPONENT] Computed properties OK - pluginCount:", pc, "lineCount:", lc);
+        } catch (e) {
+            console.error("[COMPONENT] Error accessing computed properties:", e.message, e.stack);
+        }
+    },
     data() {
         return {
             showPlugins: true,
@@ -94,16 +105,30 @@ const SearchComponent = {
             return count != null ? + count : 0;
         },
         async openPlugin(pluginName) {
-            let req = await fetch(`https://raw.githubusercontent.com/runelite/plugin-hub/master/plugins/${pluginName}`);
-            let text = await req.text();
-            let prop = {};
-            for (let line of text.split("\n")) {
-                let kv = line.split("=", 2);
-                if (kv.length == 2) {
-                    prop[kv[0]] = kv[1];
+            try {
+                //console.log("[COMPONENT] Opening plugin:", pluginName);
+                let req = await fetch(`https://raw.githubusercontent.com/runelite/plugin-hub/master/plugins/${pluginName}`);
+                if (!req.ok) {
+                    throw new Error(`Failed to fetch plugin metadata: ${req.status} ${req.statusText}`);
                 }
+                let text = await req.text();
+                let prop = {};
+                for (let line of text.split("\n")) {
+                    let kv = line.split("=", 2);
+                    if (kv.length == 2) {
+                        prop[kv[0]] = kv[1];
+                    }
+                }
+                const repo = (prop.repository || "").replace(/\.git$/, "");
+                const commit = prop.commit || "";
+                if (repo && commit) {
+                    window.open(`${repo}/tree/${commit}`);
+                } else {
+                    console.warn("[COMPONENT] Missing repository or commit for plugin:", pluginName, "props:", prop);
+                }
+            } catch (e) {
+                console.error("[COMPONENT] Error in openPlugin:", e.message, e.stack);
             }
-            window.open(`${prop.repository.replace(/\.git$/, "")}/tree/${prop.commit}`);
         }
     },
     template: `
