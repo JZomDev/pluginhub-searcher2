@@ -1,8 +1,8 @@
 {
-  "lastModified": "2026-09-30T09:10:35.137106849Z",
+  "lastModified": "2026-09-30T09:20:39.014809477Z",
   "totalChunks": 2,
   "splits": [
     {"index": 0, "file": "plugins.bin.gz.0", "size": 47185920},
-    {"index": 1, "file": "plugins.bin.gz.1", "size": 30265048}
+    {"index": 1, "file": "plugins.bin.gz.1", "size": 30249553}
   ]
 }
