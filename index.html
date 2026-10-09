@@ -1,232 +1,47 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-	<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>">
-	<meta charset="utf8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.min.js"></script>
-
-	<style>
-		body {
-			margin: 0;
-			min-height: 100vh;
-		}
-
-		#app {
-			display: flex;
-			flex-direction: column;
-			min-height: 100vh;
-			padding: 1rem;
-			box-sizing: border-box;
-		}
-
-		.content {
-			flex: 1;
-		}
-
-		.footer {
-			margin-top: 2rem;
-			padding-top: 0.75rem;
-			border-top: 1px solid #ddd;
-			font-size: 0.9em;
-			color: #666;
-		}
-
-		.error {
-			background-color: rgba(255, 0, 0, 0.5);
-		}
-
-        .toolbar {
-		position: sticky;
-		top: 0;
-		background-color: #f5f5f5;
-		border-bottom: 1px solid #ddd;
-		padding: 0.33rem 0.5rem;
-		display: flex;
-		gap: 1.5rem;
-		align-items: center;
-		z-index: 100;
-	}
-
-	.toolbar-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		user-select: none;
-		font-size: 0.9em;
-		color: #333;
-	}
-
-	.toolbar-item input[type="checkbox"] {
-		margin: 0;
-		cursor: pointer;
-	}
-
-	.search {
-			margin-bottom: 2em;
-		}
-		.search > input {
-			width: calc(100% - 2em);
-		}
-
-		.list > .header {
-			cursor: pointer;
-		}
-
-		.plugin {
-			font-family: monospace;
-			cursor: pointer;
-		}
-
-		.noselect {
-			user-select: none;
-		}
-
-		ul {
-			margin: 0;
-		}
-
-		.result-summary {
-			margin-top: 1rem;
-		}
-
-		.search-header {
-			font-weight: bold;
-			margin-bottom: 0.5rem;
-		}
-
-		.plugin-count {
-			margin-bottom: 0.5rem;
-		}
-
-		.plugin-list {
-			list-style: none;
-			padding-left: 1rem;
-		}
-
-		.plugin-item {
-			margin-bottom: 1rem;
-		}
-
-		.plugin-name {
-			font-family: monospace;
-			margin-bottom: 0.25rem;
-		}
-
-		.line-count {
-			margin-bottom: 0.5rem;
-		}
-
-		.line-list {
-			list-style: none;
-			padding-left: 1rem;
-		}
-
-		.line-item {
-			margin: 0.25rem 0;
-		}
-
-		.line-item a {
-			font-family: monospace;
-			font-size: 0.9em;
-		}
-
-		.summary-footer {
-			margin-top: 1rem;
-			padding-top: 0.5rem;
-			font-size: 0.9em;
-			color: #666;
-			text-align: center;
-		}
-
-		.symbol-list {
-			max-height: 50em;
-			overflow-y: auto;
-			border: 1px solid #ddd;
-			padding: 0.5rem;
-			margin-bottom: 0.5rem;
-			background: #f9f9f9;
-			font-family: monospace;
-			font-size: 0.9em;
-		}
-
-		.plugin-entry {
-			margin: 0.25rem 0;
-		}
-
-		/* Mobile responsive styles */
-		@media (max-width: 768px) {
-			body {
-				padding: 0;
-			}
-
-			#app {
-				padding: 0.5rem;
-				gap: 0.5rem;
-			}
-
-			.toolbar {
-				flex-wrap: wrap;
-				gap: 0.75rem;
-				padding: 0.5rem;
-			}
-
-			.toolbar-item {
-				font-size: 0.85em;
-				gap: 0.25rem;
-			}
-
-			.search > input {
-				width: 100%;
-				padding: 0.75rem;
-				font-size: 16px; /* Prevents iOS zoom on focus */
-			}
-
-			.footer {
-				margin-top: 1rem;
-				padding-top: 0.5rem;
-				font-size: 0.8em;
-			}
-
-			.symbol-list {
-				max-height: 30em;
-				padding: 0.25rem;
-			}
-
-			.line-item a,
-			.plugin-name {
-				font-size: 0.85em;
-			}
-		}
-
-		/* Small mobile devices */
-		@media (max-width: 480px) {
-			#app {
-				padding: 0.25rem;
-			}
-
-			.toolbar {
-				gap: 0.5rem;
-				padding: 0.25rem;
-			}
-
-			.toolbar-item {
-				font-size: 0.8em;
-			}
-
-			.plugin-list,
-			.line-list {
-				padding-left: 0.5rem;
-			}
-		}
-	</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PluginHub Searcher</title>
+  <style>
+    body{margin:0;min-height:100vh;background:#fff;color:#111}
+    #app{display:flex;flex-direction:column;min-height:100vh;padding:1rem;box-sizing:border-box}
+    .content{flex:1}
+    .footer{margin-top:2rem;padding-top:.75rem;border-top:1px solid #ddd;font-size:.9em;color:#666}
+    .toolbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:1.5rem;padding:.33rem .5rem;border-bottom:1px solid #ddd;background:#f5f5f5}
+    .toolbar-item{display:flex;align-items:center;gap:.5rem;cursor:pointer;user-select:none;font-size:.9em;color:#333}
+    .toolbar-item input{margin:0;cursor:pointer}
+    .search{margin-bottom:2em}
+    .search-input{width:calc(100% - 2em);padding:2px 4px;font:1.2em Arial,sans-serif}
+    .error{padding:.5rem;background:rgba(255,0,0,.16)}
+    .result-summary{margin-top:1rem}
+    .plugin-count,.line-count{margin-bottom:.5rem;cursor:pointer}
+    .symbol-list{max-height:50em;overflow-y:auto;margin-bottom:.5rem;padding:.5rem;border:1px solid #ddd;background:#f9f9f9;font: .9em/1.4 monospace}
+    .plugin-list,.line-list{margin:0;padding-left:1rem;list-style:none}
+    .plugin-item{margin-bottom:1rem}
+    .plugin-name{font-family:monospace;cursor:pointer}
+    .line-item{margin:.25rem 0}
+    .line-item a{font-family:monospace;font-size:.9em}
+    .search-footer{margin-top:1rem;padding-top:.5rem;text-align:center;font-size:.9em;color:#666}
+    .empty{padding:.5rem 0;color:#333}
+    .noselect{user-select:none}
+  </style>
 </head>
-
 <body>
-<div id="app"></div>
+  <div id="app">
+    <div class="toolbar" aria-label="Search options">
+      <label class="toolbar-item"><input id="regex" type="checkbox" checked> Regex</label>
+      <label class="toolbar-item"><input id="case-sensitive" type="checkbox" checked> Case sensitive</label>
+    </div>
+    <div id="entries" class="content"></div>
+    <footer class="footer">
+      <a href="https://github.com/JZomDev/pluginhub-searcher2/commits/main">pluginhub-searcher2</a>
+      <span id="index-updated"></span>
+    </footer>
+  </div>
 
-<script type="module" src="script/main.js"></script>
+  <script src="scripts/reverse-search-browser.js"></script>
+  <script src="scripts/app.js"></script>
 </body>
 </html>
