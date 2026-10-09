@@ -3,19 +3,21 @@
 
     const HEADER_SIZE = 88;
     const GRAM_ENTRY_SIZE = 20;
+    const MAX_INDEX_PART_SIZE = 75 * 1000 * 1000;
+    const MAX_MANIFEST_SIZE = 1024 * 1024;
     const MAX_FILE_TABLE_SIZE = 32 * 1024 * 1024;
     const MAX_POSTING_SIZE = 128 * 1024 * 1024;
     const MAX_SOURCE_SIZE = 8 * 1024 * 1024;
-    const MAX_FULL_ARTIFACT_FALLBACK = 512 * 1024 * 1024;
 
     async function readResponseBounded(response, maximumBytes) {
-        const declaredLength = Number(response.headers.get('Content-Length'));
+        const contentLength = response.headers.get('Content-Length');
+        const declaredLength = contentLength === null ? NaN : Number(contentLength);
         if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
-            throw new Error('Server does not support byte ranges and the full index exceeds the fallback limit');
+            throw new Error('Response exceeds its configured size limit');
         }
         if (!response.body) {
             const bytes = new Uint8Array(await response.arrayBuffer());
-            if (bytes.length > maximumBytes) throw new Error('Full index response exceeds the fallback limit');
+            if (bytes.length > maximumBytes) throw new Error('Response exceeds its configured size limit');
             return bytes;
         }
         const reader = response.body.getReader();
@@ -27,12 +29,12 @@
                 if (result.done) break;
                 if (offset + result.value.length > bytes.length) {
                     await reader.cancel();
-                    throw new Error('Full index response exceeds its declared length');
+                    throw new Error('Response exceeds its declared length');
                 }
                 bytes.set(result.value, offset);
                 offset += result.value.length;
             }
-            if (offset !== declaredLength) throw new Error('Full index response is shorter than its declared length');
+            if (offset !== declaredLength) throw new Error('Response is shorter than its declared length');
             return bytes;
         }
         const chunks = [];
@@ -43,7 +45,7 @@
             total += result.value.length;
             if (total > maximumBytes) {
                 await reader.cancel();
-                throw new Error('Full index response exceeds the fallback limit');
+                throw new Error('Response exceeds its configured size limit');
             }
             chunks.push(result.value);
         }
@@ -142,8 +144,10 @@
         constructor(indexUrl, fetchFunction = root.fetch.bind(root)) {
             this.indexUrl = indexUrl;
             this.fetch = fetchFunction;
-            this.fullArtifact = null;
+            this.partSize = 0;
+            this.partCount = 0;
             this.artifactSize = 0;
+            this.artifact = null;
             this.textOffset = 0;
             this.textSize = 0;
             this.lineCount = 0;
@@ -155,46 +159,70 @@
 
         async _range(offset, length) {
             if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length <= 0 ||
-                offset + length > this.artifactSize) throw new Error('Requested index range is invalid');
-            if (this.fullArtifact) return this.fullArtifact.slice(offset, offset + length);
-            const response = await this.fetch(this.indexUrl, {
-                headers: { Range: `bytes=${offset}-${offset + length - 1}` }
-            });
-            if (response.status === 206) {
-                const contentRange = response.headers.get('Content-Range');
-                if (contentRange && !contentRange.startsWith(`bytes ${offset}-${offset + length - 1}/`)) {
-                    throw new Error('Server returned an unexpected index range');
-                }
+                offset + length > this.artifactSize || !this.artifact) {
+                throw new Error('Requested index range is invalid');
+            }
+            return this.artifact.slice(offset, offset + length);
+        }
+
+        async _loadPart(partNumber, output) {
+            const offset = partNumber * this.partSize;
+            const expectedSize = Math.min(this.partSize, this.artifactSize - offset);
+            const shardUrl = new URL(this.indexUrl);
+            shardUrl.pathname += `.part-${String(partNumber).padStart(5, '0')}`;
+            const response = await this.fetch(shardUrl.href);
+            if (response.status !== 200) {
+                throw new Error(`Could not fetch index shard: HTTP ${response.status}`);
+            }
+
+            const contentLength = response.headers.get('Content-Length');
+            if (contentLength !== null && Number(contentLength) !== expectedSize) {
+                throw new Error('Server returned an invalid index shard size');
+            }
+            if (!response.body) {
                 const bytes = new Uint8Array(await response.arrayBuffer());
-                if (bytes.length !== length) throw new Error('Server returned an incomplete index range');
-                return bytes;
+                if (bytes.length !== expectedSize) throw new Error('Server returned an invalid index shard size');
+                output.set(bytes, offset);
+                return;
             }
-            if (response.status === 200) {
-                const bytes = await readResponseBounded(response, MAX_FULL_ARTIFACT_FALLBACK);
-                if (bytes.length !== this.artifactSize) throw new Error('Server ignored Range with an invalid response size');
-                this.fullArtifact = bytes;
-                return bytes.slice(offset, offset + length);
+
+            const reader = response.body.getReader();
+            let written = 0;
+            while (true) {
+                const result = await reader.read();
+                if (result.done) break;
+                if (written + result.value.length > expectedSize) {
+                    await reader.cancel();
+                    throw new Error('Index shard exceeds its declared size');
+                }
+                output.set(result.value, offset + written);
+                written += result.value.length;
             }
-            throw new Error(`Could not fetch index range: HTTP ${response.status}`);
+            if (written !== expectedSize) throw new Error('Server returned an incomplete index shard');
         }
 
         async load() {
-            const headerResponse = await this.fetch(this.indexUrl, { headers: { Range: `bytes=0-${HEADER_SIZE - 1}` } });
-            let headerBytes;
-            if (headerResponse.status === 206) {
-                headerBytes = new Uint8Array(await headerResponse.arrayBuffer());
-                if (headerBytes.length !== HEADER_SIZE) throw new Error('Truncated index header');
-                const contentRange = headerResponse.headers.get('Content-Range');
-                const match = contentRange && contentRange.match(/^bytes 0-\d+\/(\d+)$/);
-                if (!match) throw new Error('Server did not provide the index size for its byte range');
-                this.artifactSize = Number(match[1]);
-            } else if (headerResponse.status === 200) {
-                this.fullArtifact = await readResponseBounded(headerResponse, MAX_FULL_ARTIFACT_FALLBACK);
-                this.artifactSize = this.fullArtifact.length;
-                headerBytes = this.fullArtifact.slice(0, HEADER_SIZE);
-            } else {
-                throw new Error(`Could not load search index: HTTP ${headerResponse.status}`);
+            const manifestResponse = await this.fetch(this.indexUrl);
+            if (manifestResponse.status !== 200) {
+                throw new Error(`Could not load search index manifest: HTTP ${manifestResponse.status}`);
             }
+            const manifestBytes = await readResponseBounded(manifestResponse, MAX_MANIFEST_SIZE);
+            const manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
+            if (!manifest || manifest.format !== 'RVS1-sharded' || manifest.version !== 1 ||
+                !Number.isSafeInteger(manifest.artifactSize) || manifest.artifactSize < HEADER_SIZE ||
+                manifest.partSize !== MAX_INDEX_PART_SIZE ||
+                !Number.isSafeInteger(manifest.partCount) || manifest.partCount <= 0 ||
+                manifest.partCount !== Math.ceil(manifest.artifactSize / manifest.partSize)) {
+                throw new Error('Invalid reverse index shard manifest');
+            }
+            this.artifactSize = manifest.artifactSize;
+            this.partSize = manifest.partSize;
+            this.partCount = manifest.partCount;
+            this.artifact = new Uint8Array(this.artifactSize);
+            for (let partNumber = 0; partNumber < this.partCount; partNumber++) {
+                await this._loadPart(partNumber, this.artifact);
+            }
+            const headerBytes = await this._range(0, HEADER_SIZE);
 
             if (headerBytes.length !== HEADER_SIZE ||
                 String.fromCharCode(...headerBytes.subarray(0, 4)) !== 'RVS1') {

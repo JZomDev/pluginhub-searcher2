@@ -5,7 +5,7 @@
   "main": "scripts/reverse-search.js",
   "type": "commonjs",
   "scripts": {
-    "build-index": "python3 build_reverse_index.py plugins/data plugins/index",
+    "build-index": "python3 build_reverse_index.py plugins/data plugins/index/search.ridx",
     "test": "node --test tests/*.test.js"
   }
 }

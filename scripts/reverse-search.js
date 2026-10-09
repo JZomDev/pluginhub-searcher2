@@ -22,6 +22,7 @@ const MAX_FILE_TABLE_SIZE = 32 * 1024 * 1024;
 const MAX_POSTING_COMPRESSED_SIZE = 32 * 1024 * 1024;
 const MAX_POSTING_DECOMPRESSED_SIZE = 128 * 1024 * 1024;
 const MAX_SOURCE_SIZE = 8 * 1024 * 1024;
+const MAX_INDEX_PART_SIZE = 75 * 1000 * 1000;
 
 function encodeGrams(text) {
     const bytes = Buffer.from(text.toLowerCase(), 'utf8');
@@ -67,6 +68,9 @@ function splitSourceLines(source) {
 class ReverseSearcher {
     constructor() {
         this.fd = null;
+        this.indexPath = null;
+        this.partSize = 0;
+        this.partCount = 0;
         this.fileSize = 0;
         this.lineCount = 0;
         this.grams = new Map();
@@ -79,6 +83,15 @@ class ReverseSearcher {
         this.close();
         this.fd = fs.openSync(indexPath, 'r');
         this.fileSize = fs.fstatSync(this.fd).size;
+        const prefix = Buffer.alloc(4);
+        fs.readSync(this.fd, prefix, 0, prefix.length, 0);
+        if (prefix.toString('ascii') !== 'RVS1') {
+            const manifestBytes = fs.readFileSync(indexPath);
+            fs.closeSync(this.fd);
+            this.fd = null;
+            this.indexPath = indexPath;
+            this._configureParts(JSON.parse(manifestBytes.toString('utf8')));
+        }
         if (this.fileSize < HEADER_SIZE) throw new Error('Truncated reverse index header');
         const header = this._read(0, HEADER_SIZE);
         if (header.toString('ascii', 0, 4) !== 'RVS1') throw new Error('Invalid reverse index magic');
@@ -128,6 +141,19 @@ class ReverseSearcher {
         return this.lineCount;
     }
 
+    _configureParts(manifest) {
+        if (!manifest || manifest.format !== 'RVS1-sharded' || manifest.version !== 1 ||
+            !Number.isSafeInteger(manifest.artifactSize) || manifest.artifactSize < HEADER_SIZE ||
+            manifest.partSize !== MAX_INDEX_PART_SIZE ||
+            !Number.isSafeInteger(manifest.partCount) || manifest.partCount <= 0 ||
+            manifest.partCount !== Math.ceil(manifest.artifactSize / manifest.partSize)) {
+            throw new Error('Invalid reverse index shard manifest');
+        }
+        this.fileSize = manifest.artifactSize;
+        this.partSize = manifest.partSize;
+        this.partCount = manifest.partCount;
+    }
+
     _validateSections(gramCount, fileCount) {
         const sections = this.sections;
         if (!Number.isSafeInteger(this.lineCount) || this.lineCount <= 0 ||
@@ -147,6 +173,25 @@ class ReverseSearcher {
         if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 ||
             offset + length > this.fileSize) throw new Error('Index read is out of bounds');
         const buffer = Buffer.alloc(length);
+        if (this.partCount > 0) {
+            let copied = 0;
+            while (copied < length) {
+                const absoluteOffset = offset + copied;
+                const partNumber = Math.floor(absoluteOffset / this.partSize);
+                const partOffset = absoluteOffset % this.partSize;
+                const partPath = `${this.indexPath}.part-${String(partNumber).padStart(5, '0')}`;
+                const partFd = fs.openSync(partPath, 'r');
+                try {
+                    const count = fs.readSync(partFd, buffer, copied,
+                        Math.min(length - copied, this.partSize - partOffset), partOffset);
+                    if (count === 0) throw new Error('Unexpected end of reverse index shard');
+                    copied += count;
+                } finally {
+                    fs.closeSync(partFd);
+                }
+            }
+            return buffer;
+        }
         let read = 0;
         while (read < length) {
             const count = fs.readSync(this.fd, buffer, read, length - read, offset + read);
@@ -272,6 +317,9 @@ class ReverseSearcher {
     close() {
         if (this.fd !== null) fs.closeSync(this.fd);
         this.fd = null;
+        this.indexPath = null;
+        this.partSize = 0;
+        this.partCount = 0;
         this.fileSize = 0;
         this.lineCount = 0;
         this.grams.clear();

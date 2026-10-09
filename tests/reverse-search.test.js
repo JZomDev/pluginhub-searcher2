@@ -8,6 +8,15 @@ const { test } = require('node:test');
 const { ReverseSearcher } = require('../scripts/reverse-search.js');
 const { BrowserReverseSearcher } = require('../scripts/reverse-search-browser.js');
 
+function indexFiles(indexPath) {
+    const directory = path.dirname(indexPath);
+    const prefix = `${path.basename(indexPath)}.part-`;
+    return fs.readdirSync(directory)
+        .filter(name => name.startsWith(prefix))
+        .sort()
+        .map(name => [name, fs.readFileSync(path.join(directory, name))]);
+}
+
 test('reverse index searches source lines and preserves exact result metadata', async t => {
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'reverse-index-'));
     t.after(() => fs.rmSync(temporaryDirectory, { recursive: true, force: true }));
@@ -38,7 +47,6 @@ test('reverse index searches source lines and preserves exact result metadata', 
     }));
 
     const indexDirectory = path.join(temporaryDirectory, 'index');
-    fs.mkdirSync(indexDirectory);
     const indexPath = path.join(indexDirectory, 'search.ridx');
     const python = process.env.PYTHON || (fs.existsSync('/Library/Frameworks/Python.framework/Versions/3.13/bin/python3')
         ? '/Library/Frameworks/Python.framework/Versions/3.13/bin/python3'
@@ -46,7 +54,7 @@ test('reverse index searches source lines and preserves exact result metadata', 
     execFileSync(python, [
         path.join(__dirname, '..', 'build_reverse_index.py'),
         dataDirectory,
-        indexDirectory,
+        indexPath,
         '2'
     ], { stdio: 'pipe' });
 
@@ -58,6 +66,10 @@ test('reverse index searches source lines and preserves exact result metadata', 
         '1'
     ], { stdio: 'pipe' });
     assert.deepEqual(fs.readFileSync(indexPath), fs.readFileSync(serialIndexPath));
+    assert.deepEqual(indexFiles(indexPath), indexFiles(serialIndexPath));
+    const manifest = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    assert.equal(manifest.format, 'RVS1-sharded');
+    for (const [, part] of indexFiles(indexPath)) assert.ok(part.length <= manifest.partSize);
 
     const searcher = new ReverseSearcher();
     t.after(() => searcher.close());
@@ -81,33 +93,32 @@ test('reverse index searches source lines and preserves exact result metadata', 
     assert.equal(searcher.search('Toa Keris').count, 1);
     assert.equal(searcher.search('Keris Toa').count, 0);
 
-    const artifact = fs.readFileSync(indexPath);
-    const rangeFetch = async (url, request) => {
-        const match = request.headers.Range.match(/^bytes=(\d+)-(\d+)$/);
-        const start = Number(match[1]);
-        const end = Number(match[2]);
-        const bytes = artifact.subarray(start, end + 1);
+    const manifestBytes = fs.readFileSync(indexPath);
+    const requestedParts = [];
+    const shardFetch = async url => {
+        if (url === 'https://pages.example/search.ridx') {
+            return {
+                status: 200,
+                headers: { get: name => name.toLowerCase() === 'content-length' ? String(manifestBytes.length) : null },
+                arrayBuffer: async () => manifestBytes.buffer.slice(
+                    manifestBytes.byteOffset, manifestBytes.byteOffset + manifestBytes.byteLength)
+            };
+        }
+        const partMatch = url.match(/\.part-(\d+)$/);
+        assert.ok(partMatch);
+        requestedParts.push(Number(partMatch[1]));
+        const part = fs.readFileSync(`${indexPath}.part-${partMatch[1]}`);
         return {
-            status: 206,
-            headers: { get: name => name.toLowerCase() === 'content-range'
-                ? `bytes ${start}-${end}/${artifact.length}`
-                : null },
-            arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+            status: 200,
+            headers: { get: name => name.toLowerCase() === 'content-length' ? String(part.length) : null },
+            body: null,
+            arrayBuffer: async () => part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength)
         };
     };
-    const browserSearcher = new BrowserReverseSearcher('https://pages.example/search.ridx', rangeFetch);
+    const browserSearcher = new BrowserReverseSearcher('https://pages.example/search.ridx', shardFetch);
     await browserSearcher.load();
+    assert.deepEqual(requestedParts, Array.from({ length: manifest.partCount }, (_, index) => index));
     const browserResult = await browserSearcher.search('Toa Keris Cam', { caseSensitive: true });
     assert.deepEqual(browserResult, phrase.results);
     assert.equal((await browserSearcher.search('PouchPlacement')).length, 1);
-
-    const noRangeFetcher = async () => ({
-        status: 200,
-        headers: { get: name => name.toLowerCase() === 'content-length' ? String(artifact.length) : null },
-        body: null,
-        arrayBuffer: async () => artifact.buffer.slice(artifact.byteOffset, artifact.byteOffset + artifact.byteLength)
-    });
-    const fallbackSearcher = new BrowserReverseSearcher('https://pages.example/search.ridx', noRangeFetcher);
-    await fallbackSearcher.load();
-    assert.deepEqual(await fallbackSearcher.search('Toa Keris Cam', { caseSensitive: true }), phrase.results);
 });

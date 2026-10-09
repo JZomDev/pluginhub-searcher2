@@ -20,6 +20,7 @@ HEADER = struct.Struct("<4sIQIIQQQQQQQQ")
 GRAM_ENTRY = struct.Struct("<3sB QII")
 GRAM_WIDTHS = (3,)
 MAX_SOURCE_BYTES = 8 * 1024 * 1024
+MAX_PART_BYTES = 75 * 1000 * 1000
 UINT32_MAX = (1 << 32) - 1
 SORT_BATCH_SIZE = 1_000_000
 SORT_MERGE_FAN_IN = 48
@@ -83,6 +84,34 @@ def _merge_run_batch(task):
     paths, output_path = task
     _merge_runs([(Path(path), line_base) for path, line_base in paths], Path(output_path))
     return output_path
+
+
+def _write_index_parts(artifact_path, output_path):
+    part_count = 0
+    artifact_size = artifact_path.stat().st_size
+    with artifact_path.open("rb") as artifact:
+        while block := artifact.read(MAX_PART_BYTES):
+            part_path = output_path.with_name(f"{output_path.name}.part-{part_count:05d}")
+            with part_path.open("wb") as part:
+                part.write(block)
+            part_count += 1
+
+    manifest = {
+        "format": "RVS1-sharded",
+        "version": 1,
+        "artifactSize": artifact_size,
+        "partSize": MAX_PART_BYTES,
+        "partCount": part_count,
+    }
+    output_path.write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
+
+    part_prefix = f"{output_path.name}.part-"
+    for existing in output_path.parent.iterdir():
+        if not existing.name.startswith(part_prefix):
+            continue
+        suffix = existing.name[len(part_prefix):]
+        if suffix.isdigit() and int(suffix) >= part_count and existing.is_file():
+            existing.unlink()
 
 
 def _write_sorted_run(values, run_path):
@@ -302,7 +331,8 @@ def build_index(source_dir, output_path, workers=None):
         )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("wb") as output:
+        artifact_path = temporary_directory / "search.ridx.raw"
+        with artifact_path.open("wb") as output:
             output.write(header)
             output.write(dictionary)
             with posting_spool_path.open("rb") as spool:
@@ -312,12 +342,16 @@ def build_index(source_dir, output_path, workers=None):
             with text_spool_path.open("rb") as spool:
                 while block := spool.read(1024 * 1024):
                     output.write(block)
+        _write_index_parts(artifact_path, output_path)
+        artifact_size = artifact_path.stat().st_size
+        part_count = (artifact_size + MAX_PART_BYTES - 1) // MAX_PART_BYTES
 
     return {
         "lines": line_count,
         "grams": len(gram_entries),
         "files": len(file_entries),
-        "bytes": output_path.stat().st_size,
+        "bytes": artifact_size,
+        "parts": part_count,
         "workers": worker_count,
         "output": output_path,
     }
@@ -339,6 +373,7 @@ def main():
     print(f"  Source files: {stats['files']:,}")
     print(f"  Workers: {stats['workers']}")
     print(f"  Artifact size: {stats['bytes'] / 1024 / 1024:.1f} MiB")
+    print(f"  Shard files: {stats['parts']:,} (maximum {MAX_PART_BYTES / 1_000_000:.0f} MB each)")
     return 0
 
 
