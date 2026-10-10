@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Python File
         run: |
-          python3 build_reverse_index.py plugins/data plugins/index/search.ridx
+          python3 build_reverse_index.py plugins/data plugins/index
 
       - name: Commit and push search index if changed
         run: |
@@ -46,5 +46,5 @@ jobs:
             git commit -m "$COMMIT_MESSAGE"
             git push
           else
-            echo "No changes to search-index.json"
+            echo "No changes to plugin data or search index"
           fi

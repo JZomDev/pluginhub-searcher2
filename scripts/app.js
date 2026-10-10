@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const INDEX_URL = new URL('plugins/index/search.ridx', document.baseURI);
+    const INDEX_URL = new URL('plugins/index/', document.baseURI);
     const MAX_RESULTS = 5000;
     const entriesElement = document.getElementById('entries');
     const regexElement = document.getElementById('regex');

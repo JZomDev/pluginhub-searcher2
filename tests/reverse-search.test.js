@@ -5,15 +5,33 @@ const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
-const { ReverseSearcher } = require('../scripts/reverse-search.js');
-const { BrowserReverseSearcher } = require('../scripts/reverse-search-browser.js');
+const { BrowserReverseSearcher, requiredRegexLiterals } = require('../scripts/reverse-search-browser.js');
 
-function indexFiles(indexPath) {
-    const directory = path.dirname(indexPath);
-    const prefix = `${path.basename(indexPath)}.part-`;
-    return fs.readdirSync(directory)
-        .filter(name => name.startsWith(prefix))
-        .sort()
+const python = process.env.PYTHON || 'python3';
+
+function buildIndex(dataDirectory, indexDirectory, workers) {
+    execFileSync(python, [
+        path.join(__dirname, '..', 'build_reverse_index.py'),
+        dataDirectory,
+        indexDirectory,
+        String(workers)
+    ], { stdio: 'pipe' });
+}
+
+function fileFetch(indexDirectory, log = []) {
+    return async url => {
+        const relative = new URL(url).pathname.replace(/^\/index\//, '');
+        log.push(relative);
+        const filePath = path.join(indexDirectory, relative);
+        if (!fs.existsSync(filePath)) return { ok: false, status: 404 };
+        const bytes = fs.readFileSync(filePath);
+        return { ok: true, status: 200, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+    };
+}
+
+function listFiles(directory) {
+    return fs.readdirSync(directory, { recursive: true }).sort()
+        .filter(name => fs.statSync(path.join(directory, name)).isFile())
         .map(name => [name, fs.readFileSync(path.join(directory, name))]);
 }
 
@@ -38,87 +56,63 @@ test('reverse index searches source lines and preserves exact result metadata', 
                 'RunePouchPlacement enum',
                 'Visible phrase appears here',
                 'Toa happens on another line',
-                'Keris appears on this different line'
+                'Keris appears on this different line',
+                'client.getLocalPlayer().getName()'
             ].join('\r\n')
         }]
     }));
     fs.writeFileSync(path.join(dataDirectory, 'second-plugin.json'), JSON.stringify({
-        files: [{ filePath: 'src/Other.java', content: 'Toa unrelated\n' }]
+        files: [{ filePath: 'src/Other.java', content: 'Toa unrelated\nclientXgetLocalPlayer\n' }]
     }));
 
     const indexDirectory = path.join(temporaryDirectory, 'index');
-    const indexPath = path.join(indexDirectory, 'search.ridx');
-    const python = process.env.PYTHON || (fs.existsSync('/Library/Frameworks/Python.framework/Versions/3.13/bin/python3')
-        ? '/Library/Frameworks/Python.framework/Versions/3.13/bin/python3'
-        : 'python3');
-    execFileSync(python, [
-        path.join(__dirname, '..', 'build_reverse_index.py'),
-        dataDirectory,
-        indexPath,
-        '2'
-    ], { stdio: 'pipe' });
+    buildIndex(dataDirectory, indexDirectory, 2);
+    const serialDirectory = path.join(temporaryDirectory, 'serial');
+    buildIndex(dataDirectory, serialDirectory, 1);
+    assert.deepEqual(listFiles(indexDirectory), listFiles(serialDirectory));
 
-    const serialIndexPath = path.join(temporaryDirectory, 'serial.ridx');
-    execFileSync(python, [
-        path.join(__dirname, '..', 'build_reverse_index.py'),
-        dataDirectory,
-        serialIndexPath,
-        '1'
-    ], { stdio: 'pipe' });
-    assert.deepEqual(fs.readFileSync(indexPath), fs.readFileSync(serialIndexPath));
-    assert.deepEqual(indexFiles(indexPath), indexFiles(serialIndexPath));
-    const manifest = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    assert.equal(manifest.format, 'RVS1-sharded');
-    for (const [, part] of indexFiles(indexPath)) assert.ok(part.length <= manifest.partSize);
+    const requests = [];
+    const searcher = new BrowserReverseSearcher('https://pages.example/index/', fileFetch(indexDirectory, requests));
+    await searcher.load();
 
-    const searcher = new ReverseSearcher();
-    t.after(() => searcher.close());
-    searcher.loadIndex(indexPath);
-
-    const phrase = searcher.search('Toa Keris Cam', { caseSensitive: true });
-    assert.equal(phrase.count, 1);
-    assert.deepEqual(phrase.results[0], {
+    const phrase = await searcher.search('Toa Keris Cam', { caseSensitive: true });
+    assert.deepEqual(phrase, [{
         plugin: 'zom-keris-cam',
         repository: 'https://github.com/example/zom-keris-cam.git',
         commit: 'abc123',
         filePath: 'src/main/java/com/zom/TOAKerisCamPlugin.java',
         line: 3,
         content: '\tname = "Toa Keris Cam"'
-    });
+    }]);
 
-    assert.equal(searcher.search('PouchPlacement').count, 1);
-    assert.equal(searcher.search('visible phrase').count, 1);
-    assert.equal(searcher.search('VISIBLE PHRASE', { caseSensitive: true }).count, 0);
-    assert.equal(searcher.search('metadata-only-needle').count, 0);
-    assert.equal(searcher.search('Toa Keris').count, 1);
-    assert.equal(searcher.search('Keris Toa').count, 0);
+    assert.equal((await searcher.search('PouchPlacement')).length, 1);
+    assert.equal((await searcher.search('visible phrase')).length, 1);
+    assert.equal((await searcher.search('VISIBLE PHRASE', { caseSensitive: true })).length, 0);
+    assert.equal((await searcher.search('metadata-only-needle')).length, 0);
+    assert.equal((await searcher.search('Toa Keris')).length, 1);
+    assert.equal((await searcher.search('Keris Toa')).length, 0);
+    assert.equal((await searcher.search('Toa')).length, 3);
 
-    const manifestBytes = fs.readFileSync(indexPath);
-    const requestedParts = [];
-    const shardFetch = async url => {
-        if (url === 'https://pages.example/search.ridx') {
-            return {
-                status: 200,
-                headers: { get: name => name.toLowerCase() === 'content-length' ? String(manifestBytes.length) : null },
-                arrayBuffer: async () => manifestBytes.buffer.slice(
-                    manifestBytes.byteOffset, manifestBytes.byteOffset + manifestBytes.byteLength)
-            };
-        }
-        const partMatch = url.match(/\.part-(\d+)$/);
-        assert.ok(partMatch);
-        requestedParts.push(Number(partMatch[1]));
-        const part = fs.readFileSync(`${indexPath}.part-${partMatch[1]}`);
-        return {
-            status: 200,
-            headers: { get: name => name.toLowerCase() === 'content-length' ? String(part.length) : null },
-            body: null,
-            arrayBuffer: async () => part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength)
-        };
-    };
-    const browserSearcher = new BrowserReverseSearcher('https://pages.example/search.ridx', shardFetch);
-    await browserSearcher.load();
-    assert.deepEqual(requestedParts, Array.from({ length: manifest.partCount }, (_, index) => index));
-    const browserResult = await browserSearcher.search('Toa Keris Cam', { caseSensitive: true });
-    assert.deepEqual(browserResult, phrase.results);
-    assert.equal((await browserSearcher.search('PouchPlacement')).length, 1);
+    // Regex queries use the index through their required literals.
+    requests.length = 0;
+    const regex = await searcher.search('client.getLocalPlayer', { isRegex: true, caseSensitive: true });
+    assert.deepEqual(regex.map(result => result.plugin), ['second-plugin', 'zom-keris-cam']);
+    assert.ok(requests.every(name => !name.startsWith('manifest')));
+    assert.equal((await searcher.search('client\\.getLocal', { isRegex: true })).length, 1);
+    assert.equal((await searcher.search('^Toa (happens|unrelated)', { isRegex: true, caseSensitive: true })).length, 2);
+
+    // Queries with no usable trigram fall back to scanning every chunk.
+    assert.equal((await searcher.search('^.{0,2}$', { isRegex: true })).length, 1);
+    assert.equal((await searcher.search('zz')).length, 0);
+});
+
+test('required regex literals are conservative', () => {
+    assert.deepEqual(requiredRegexLiterals('client.getLocalPlayer'), ['client', 'getLocalPlayer']);
+    assert.deepEqual(requiredRegexLiterals('ItemID\\.ABYSSAL_WHIP'), ['ItemID.ABYSSAL_WHIP']);
+    assert.deepEqual(requiredRegexLiterals('colou?r'), ['colo']);
+    assert.deepEqual(requiredRegexLiterals('abcd*e'), ['abc']);
+    assert.deepEqual(requiredRegexLiterals('(a|b)getItem[A-Z]+Container'), ['getItem', 'Container']);
+    assert.deepEqual(requiredRegexLiterals('\\x41bcdef'), ['bcdef']);
+    assert.deepEqual(requiredRegexLiterals('[]abc]def'), ['def']);
+    assert.equal(requiredRegexLiterals('foo|bar'), null);
 });
