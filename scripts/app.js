@@ -3,11 +3,10 @@
 
     const INDEX_URL = new URL('plugins/index/', document.baseURI);
     const MAX_RESULTS = 5000;
-    const RENDER_INTERVAL_MS = 250;
     const entriesElement = document.getElementById('entries');
     const regexElement = document.getElementById('regex');
     const caseSensitiveElement = document.getElementById('case-sensitive');
-    const updatedElement = document.getElementById('index-updated');
+    const indexStatusElement = document.getElementById('index-status');
     const pluginCountElement = document.getElementById('plugin-count');
     const searcher = new window.ReverseSearchBrowser.BrowserReverseSearcher(INDEX_URL.href);
     const indexReady = searcher.load();
@@ -116,7 +115,6 @@
             request: 0,
             abort: null,
             searching: false,
-            lastRender: 0,
             results: [],
             lineTotal: 0,
             plugins: []
@@ -173,6 +171,7 @@
         const expanded = header.getAttribute('aria-expanded') === 'true';
         header.setAttribute('aria-expanded', String(!expanded));
         (type === 'plugins' ? entry.pluginList : entry.lineList).hidden = expanded;
+        if (type === 'lines' && !expanded) renderLines(entry);
         renderCounts(entry);
     }
 
@@ -194,7 +193,6 @@
             installs(right.plugin) - installs(left.plugin) || left.plugin.localeCompare(right.plugin));
         const pluginsExpanded = entry.pluginCount.getAttribute('aria-expanded') !== 'false';
         const linesExpanded = entry.lineCount.getAttribute('aria-expanded') === 'true';
-        entry.lastRender = Date.now();
         entry.summary.hidden = entry.lineTotal === 0 && !entry.searching;
         entry.pluginCount.setAttribute('aria-expanded', String(pluginsExpanded));
         entry.pluginList.hidden = !pluginsExpanded;
@@ -221,7 +219,14 @@
             entry.pluginList.append(item);
         }
 
+        renderLines(entry);
+    }
+
+    // Line rows are only built while the (initially collapsed) list is open.
+    function renderLines(entry) {
+        const results = entry.results;
         entry.lineList.replaceChildren();
+        if (entry.lineList.hidden) return;
         const fragment = document.createDocumentFragment();
         const sortedResults = [...results].sort((left, right) => installs(right.plugin) - installs(left.plugin));
         for (const [index, result] of sortedResults.entries()) {
@@ -274,12 +279,7 @@
                 isRegex,
                 limit: MAX_RESULTS,
                 priority: installs,
-                signal: controller.signal,
-                onProgress: snapshot => {
-                    if (request !== entry.request || Date.now() - entry.lastRender < RENDER_INTERVAL_MS) return;
-                    applyResults(entry, snapshot());
-                    renderEntry(entry);
-                }
+                signal: controller.signal
             });
             if (request !== entry.request) return;
             entry.searching = false;
@@ -300,10 +300,10 @@
     function startPrefetch() {
         if (prefetchStarted) return;
         prefetchStarted = true;
-        searcher.prefetch((done, total) => {
-            updatedElement.textContent = done < total
-                ? ` | Downloading index for instant searches: ${Math.floor(done / total * 100)}%`
-                : ' | Index downloaded: searches no longer need the network';
+        searcher.prefetch((done, total, failed) => {
+            if (done < total) indexStatusElement.textContent = `Loading index: ${Math.floor(done / total * 100)}%`;
+            else if (failed) indexStatusElement.textContent = `Index loaded except ${failed} files (they load when a search needs them)`;
+            else indexStatusElement.textContent = 'Index loaded';
         });
     }
 
@@ -365,6 +365,7 @@
             if (inputs.every(input => !input.value.trim())) startPrefetch();
         }).catch(error => {
             const entry = entriesElement.firstElementChild._searchEntry;
+            indexStatusElement.textContent = 'Index failed to load';
             entry.error.textContent = `Unable to load search index: ${error.message}`;
             entry.error.hidden = false;
         });

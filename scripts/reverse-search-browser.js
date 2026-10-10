@@ -291,14 +291,16 @@
                     ...chunks.map((_, index) => indexFileName('chunks', index))
                 ];
                 let done = 0;
+                let failed = 0;
                 this.prefetching = mapConcurrent(names, PREFETCH_CONCURRENCY, async name => {
                     while (this.activeSearches) await this.idle;
                     try {
                         await this._compressed(name);
                     } catch (error) {
+                        failed++;
                         console.warn(`Prefetch of ${name} failed:`, error);
                     }
-                    onProgress(++done, names.length);
+                    onProgress(++done, names.length, failed);
                 });
             }
             return this.prefetching;
@@ -327,9 +329,7 @@
         // Returns { results, lineCount, plugins }. Every match is counted, but
         // only options.limit lines are kept (highest options.priority(plugin)
         // first), so huge result sets never exhaust memory. plugins lists every
-        // matching plugin with its line count. After each chunk,
-        // options.onProgress(snapshot) is called, where snapshot() builds the
-        // same shape for the matches so far; options.signal cancels the search.
+        // matching plugin with its line count. options.signal cancels the search.
         async search(query, options = {}) {
             if (!this.manifest) throw new Error('Search index is not loaded');
             if (this.activeSearches++ === 0) this.idle = new Promise(resolve => { this.resolveIdle = resolve; });
@@ -412,7 +412,6 @@
                         pluginLines.set(pluginIndex, (pluginLines.get(pluginIndex) || 0) + fileMatches);
                     }
                 }
-                if (options.onProgress) options.onProgress(snapshot);
             }, () => signal?.aborted);
             signal?.throwIfAborted();
             return snapshot();

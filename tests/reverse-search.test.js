@@ -123,10 +123,7 @@ test('reverse index searches source lines and preserves exact result metadata', 
     const missing = new BrowserReverseSearcher('https://pages.example/missing/', async () => ({ ok: false, status: 404 }));
     await assert.rejects(missing.load(), /HTTP 404/);
 
-    // Progress callbacks report partial matches; aborted searches reject.
-    const progress = [];
-    await find(searcher, 'Toa', { onProgress: snapshot => progress.push(snapshot().lineCount) });
-    assert.ok(progress.length >= 1 && progress.at(-1) === 3);
+    // Aborted searches reject.
     const controller = new AbortController();
     controller.abort();
     await assert.rejects(find(searcher, 'Toa', { signal: controller.signal }), { name: 'AbortError' });
