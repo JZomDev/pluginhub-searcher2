@@ -29,6 +29,8 @@ function fileFetch(indexDirectory, log = []) {
     };
 }
 
+const find = (searcher, ...args) => searcher.search(...args).then(found => found.results);
+
 function listFiles(directory) {
     return fs.readdirSync(directory, { recursive: true }).sort()
         .filter(name => fs.statSync(path.join(directory, name)).isFile())
@@ -75,7 +77,7 @@ test('reverse index searches source lines and preserves exact result metadata', 
     const searcher = new BrowserReverseSearcher('https://pages.example/index/', fileFetch(indexDirectory, requests));
     await searcher.load();
 
-    const phrase = await searcher.search('Toa Keris Cam', { caseSensitive: true });
+    const phrase = await find(searcher, 'Toa Keris Cam', { caseSensitive: true });
     assert.deepEqual(phrase, [{
         plugin: 'zom-keris-cam',
         repository: 'https://github.com/example/zom-keris-cam.git',
@@ -85,25 +87,67 @@ test('reverse index searches source lines and preserves exact result metadata', 
         content: '\tname = "Toa Keris Cam"'
     }]);
 
-    assert.equal((await searcher.search('PouchPlacement')).length, 1);
-    assert.equal((await searcher.search('visible phrase')).length, 1);
-    assert.equal((await searcher.search('VISIBLE PHRASE', { caseSensitive: true })).length, 0);
-    assert.equal((await searcher.search('metadata-only-needle')).length, 0);
-    assert.equal((await searcher.search('Toa Keris')).length, 1);
-    assert.equal((await searcher.search('Keris Toa')).length, 0);
-    assert.equal((await searcher.search('Toa')).length, 3);
+    assert.equal((await find(searcher, 'PouchPlacement')).length, 1);
+    assert.equal((await find(searcher, 'visible phrase')).length, 1);
+    assert.equal((await find(searcher, 'VISIBLE PHRASE', { caseSensitive: true })).length, 0);
+    assert.equal((await find(searcher, 'metadata-only-needle')).length, 0);
+    assert.equal((await find(searcher, 'Toa Keris')).length, 1);
+    assert.equal((await find(searcher, 'Keris Toa')).length, 0);
+    assert.equal((await find(searcher, 'Toa')).length, 3);
 
     // Regex queries use the index through their required literals.
     requests.length = 0;
-    const regex = await searcher.search('client.getLocalPlayer', { isRegex: true, caseSensitive: true });
+    const regex = await find(searcher, 'client.getLocalPlayer', { isRegex: true, caseSensitive: true });
     assert.deepEqual(regex.map(result => result.plugin), ['second-plugin', 'zom-keris-cam']);
     assert.ok(requests.every(name => !name.startsWith('manifest')));
-    assert.equal((await searcher.search('client\\.getLocal', { isRegex: true })).length, 1);
-    assert.equal((await searcher.search('^Toa (happens|unrelated)', { isRegex: true, caseSensitive: true })).length, 2);
+    assert.equal((await find(searcher, 'client\\.getLocal', { isRegex: true })).length, 1);
+    assert.equal((await find(searcher, '^Toa (happens|unrelated)', { isRegex: true, caseSensitive: true })).length, 2);
 
     // Queries with no usable trigram fall back to scanning every chunk.
-    assert.equal((await searcher.search('^.{0,2}$', { isRegex: true })).length, 1);
-    assert.equal((await searcher.search('zz')).length, 0);
+    assert.equal((await find(searcher, '^.{0,2}$', { isRegex: true })).length, 1);
+    assert.equal((await find(searcher, 'zz')).length, 0);
+
+    // Dropped connections and server errors are retried; missing files are not.
+    const realFetch = fileFetch(indexDirectory);
+    const attempts = new Map();
+    const flakyFetch = async url => {
+        const count = (attempts.get(url) || 0) + 1;
+        attempts.set(url, count);
+        if (count === 1) throw new TypeError('Failed to fetch');
+        if (count === 2) return { ok: false, status: 503 };
+        return realFetch(url);
+    };
+    const flakySearcher = new BrowserReverseSearcher('https://pages.example/index/', flakyFetch);
+    await flakySearcher.load();
+    assert.deepEqual(await find(flakySearcher, 'Toa Keris Cam', { caseSensitive: true }), phrase);
+    const missing = new BrowserReverseSearcher('https://pages.example/missing/', async () => ({ ok: false, status: 404 }));
+    await assert.rejects(missing.load(), /HTTP 404/);
+
+    // Progress callbacks report partial matches; aborted searches reject.
+    const progress = [];
+    await find(searcher, 'Toa', { onProgress: snapshot => progress.push(snapshot().lineCount) });
+    assert.ok(progress.length >= 1 && progress.at(-1) === 3);
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(find(searcher, 'Toa', { signal: controller.signal }), { name: 'AbortError' });
+
+    // Every match is counted, but only `limit` lines are kept, highest priority first.
+    const limited = await searcher.search('Toa', { limit: 1, priority: plugin => plugin === 'second-plugin' ? 10 : 0 });
+    assert.equal(limited.lineCount, 3);
+    assert.deepEqual(limited.results.map(result => result.content), ['Toa unrelated']);
+    assert.deepEqual(limited.plugins.map(({ plugin, lines }) => [plugin, lines]).sort(), [['second-plugin', 1], ['zom-keris-cam', 2]]);
+
+    // After prefetching, searches need no network at all.
+    const prefetchRequests = [];
+    const prefetcher = new BrowserReverseSearcher('https://pages.example/index/', fileFetch(indexDirectory, prefetchRequests));
+    await prefetcher.load();
+    const reports = [];
+    await prefetcher.prefetch((done, total) => reports.push([done, total]));
+    assert.deepEqual(reports.at(-1), [reports.length, reports.length]);
+    prefetchRequests.length = 0;
+    assert.deepEqual(await find(prefetcher, 'Toa Keris Cam', { caseSensitive: true }), phrase);
+    assert.equal((await find(prefetcher, '^.{0,2}$', { isRegex: true })).length, 1);
+    assert.deepEqual(prefetchRequests, []);
 });
 
 test('required regex literals are conservative', () => {

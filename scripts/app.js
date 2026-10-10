@@ -3,11 +3,15 @@
 
     const INDEX_URL = new URL('plugins/index/', document.baseURI);
     const MAX_RESULTS = 5000;
+    const RENDER_INTERVAL_MS = 250;
     const entriesElement = document.getElementById('entries');
     const regexElement = document.getElementById('regex');
     const caseSensitiveElement = document.getElementById('case-sensitive');
     const updatedElement = document.getElementById('index-updated');
-    let searcher;
+    const pluginCountElement = document.getElementById('plugin-count');
+    const searcher = new window.ReverseSearchBrowser.BrowserReverseSearcher(INDEX_URL.href);
+    const indexReady = searcher.load();
+    let prefetchStarted = false;
     let installCounts = {};
     let isRegex = regexElement.checked;
     let caseSensitive = caseSensitiveElement.checked;
@@ -82,7 +86,7 @@
         pluginCount.setAttribute('aria-expanded', 'true');
 
         const pluginList = document.createElement('div');
-        pluginList.className = 'symbol-list plugin-list';
+        pluginList.className = 'symbol-list';
 
         const lineCount = document.createElement('div');
         lineCount.className = 'line-count noselect';
@@ -91,7 +95,7 @@
         lineCount.setAttribute('aria-expanded', 'false');
 
         const lineList = document.createElement('div');
-        lineList.className = 'symbol-list line-list';
+        lineList.className = 'symbol-list';
         lineList.hidden = true;
 
         summary.append(pluginCount, pluginList, lineCount, lineList);
@@ -110,7 +114,12 @@
             lineList,
             timer: null,
             request: 0,
-            results: []
+            abort: null,
+            searching: false,
+            lastRender: 0,
+            results: [],
+            lineTotal: 0,
+            plugins: []
         };
         container._searchEntry = entry;
 
@@ -127,7 +136,10 @@
                 if (entry.container !== entriesElement.lastElementChild) {
                     entry.container.remove();
                 } else {
-                    entry.results = [];
+                    entry.abort?.abort();
+                    entry.request++;
+                    entry.searching = false;
+                    applyResults(entry, { results: [], lineCount: 0, plugins: [] });
                     renderEntry(entry);
                 }
                 saveQueries();
@@ -157,66 +169,62 @@
     }
 
     function toggleDisclosure(entry, type) {
-        if (type === 'plugins') {
-            const expanded = entry.pluginCount.getAttribute('aria-expanded') === 'true';
-            entry.pluginCount.setAttribute('aria-expanded', String(!expanded));
-            entry.pluginCount.textContent = `${expanded ? '+' : '−'} ${new Set(entry.results.map(result => result.plugin)).size} plugins`;
-            entry.pluginList.hidden = expanded;
-        } else {
-            const expanded = entry.lineCount.getAttribute('aria-expanded') === 'true';
-            entry.lineCount.setAttribute('aria-expanded', String(!expanded));
-            entry.lineCount.textContent = `${expanded ? '+' : '−'} ${entry.results.length} lines of text`;
-            entry.lineList.hidden = expanded;
-        }
+        const header = type === 'plugins' ? entry.pluginCount : entry.lineCount;
+        const expanded = header.getAttribute('aria-expanded') === 'true';
+        header.setAttribute('aria-expanded', String(!expanded));
+        (type === 'plugins' ? entry.pluginList : entry.lineList).hidden = expanded;
+        renderCounts(entry);
+    }
+
+    function renderCounts(entry) {
+        const pluginsExpanded = entry.pluginCount.getAttribute('aria-expanded') === 'true';
+        const linesExpanded = entry.lineCount.getAttribute('aria-expanded') === 'true';
+        const searching = entry.searching ? ' (searching…)' : '';
+        entry.pluginCount.textContent = `${pluginsExpanded ? '−' : '+'} ${entry.plugins.length.toLocaleString()} plugins${searching}`;
+        entry.lineCount.textContent = `${linesExpanded ? '−' : '+'} ${entry.lineTotal.toLocaleString()} lines of text${searching}`;
+    }
+
+    function installs(plugin) {
+        return Number(installCounts[plugin]) || 0;
     }
 
     function renderEntry(entry) {
         const results = entry.results;
-        const grouped = new Map();
-        for (const result of results) {
-            if (!grouped.has(result.plugin)) grouped.set(result.plugin, []);
-            grouped.get(result.plugin).push(result);
-        }
-        const plugins = [...grouped].sort((left, right) =>
-            (Number(installCounts[right[0]]) || 0) - (Number(installCounts[left[0]]) || 0) || left[0].localeCompare(right[0]));
+        const plugins = [...entry.plugins].sort((left, right) =>
+            installs(right.plugin) - installs(left.plugin) || left.plugin.localeCompare(right.plugin));
         const pluginsExpanded = entry.pluginCount.getAttribute('aria-expanded') !== 'false';
         const linesExpanded = entry.lineCount.getAttribute('aria-expanded') === 'true';
-        entry.summary.hidden = results.length === 0;
-        entry.pluginCount.textContent = `${pluginsExpanded ? '−' : '+'} ${plugins.length} plugins`;
+        entry.lastRender = Date.now();
+        entry.summary.hidden = entry.lineTotal === 0 && !entry.searching;
         entry.pluginCount.setAttribute('aria-expanded', String(pluginsExpanded));
         entry.pluginList.hidden = !pluginsExpanded;
-        entry.lineCount.textContent = `${linesExpanded ? '−' : '+'} ${results.length} lines of text`;
         entry.lineCount.setAttribute('aria-expanded', String(linesExpanded));
         entry.lineList.hidden = !linesExpanded;
+        renderCounts(entry);
 
         entry.pluginList.replaceChildren();
-        for (const [pluginIndex, [plugin, pluginResults]] of plugins.entries()) {
+        for (const [pluginIndex, { plugin, repository, commit }] of plugins.entries()) {
             const item = document.createElement('div');
-            item.className = 'plugin-item';
+            item.className = 'plugin-entry';
             if (pluginIndex % 2 === 1) item.style.backgroundColor = '#f0f0f0';
             const link = document.createElement('a');
-            link.className = 'plugin-name';
             link.textContent = plugin;
-            const repository = repositoryUrl(
-                pluginResults[0].repository,
-                pluginResults[0].commit ? `/tree/${encodeURIComponent(pluginResults[0].commit)}` : ''
-            );
-            if (repository) {
-                link.href = repository;
+            const url = repositoryUrl(repository, commit ? `/tree/${encodeURIComponent(commit)}` : '');
+            if (url) {
+                link.href = url;
                 link.target = '_blank';
                 link.rel = 'noopener noreferrer';
             }
             const count = document.createElement('span');
-            count.textContent = ` (${(Number(installCounts[plugin]) || 0).toLocaleString()})`;
+            count.textContent = ` (${installs(plugin).toLocaleString()})`;
             item.append(link, count);
             entry.pluginList.append(item);
         }
 
         entry.lineList.replaceChildren();
         const fragment = document.createDocumentFragment();
-        const sortedResults = [...results].sort((left, right) =>
-            (Number(installCounts[right.plugin]) || 0) - (Number(installCounts[left.plugin]) || 0));
-        for (const [index, result] of sortedResults.slice(0, MAX_RESULTS).entries()) {
+        const sortedResults = [...results].sort((left, right) => installs(right.plugin) - installs(left.plugin));
+        for (const [index, result] of sortedResults.entries()) {
             const item = document.createElement('div');
             item.className = 'line-item';
             if (index % 2 === 1) item.style.backgroundColor = '#f0f0f0';
@@ -234,32 +242,69 @@
             fragment.append(item);
         }
         entry.lineList.append(fragment);
-        if (results.length > MAX_RESULTS) {
+        if (entry.lineTotal > results.length) {
             const overflow = document.createElement('div');
             overflow.className = 'summary-footer';
-            overflow.textContent = `${results.length.toLocaleString()} total results (showing ${MAX_RESULTS})`;
+            overflow.textContent = `${entry.lineTotal.toLocaleString()} total results (showing ${results.length.toLocaleString()})`;
             entry.lineList.append(overflow);
         }
     }
 
+    function applyResults(entry, { results, lineCount, plugins }) {
+        entry.results = results;
+        entry.lineTotal = lineCount;
+        entry.plugins = plugins;
+    }
+
     async function performSearch(entry) {
         const value = entry.input.value.trim();
-        if (!value || !searcher) return;
+        if (!value) return;
         const request = ++entry.request;
+        entry.abort?.abort();
+        const controller = entry.abort = new AbortController();
         entry.error.hidden = true;
         try {
-            const results = await searcher.search(value, { caseSensitive, isRegex });
+            await indexReady;
             if (request !== entry.request) return;
-            entry.results = results;
+            entry.searching = true;
+            applyResults(entry, { results: [], lineCount: 0, plugins: [] });
+            renderEntry(entry);
+            const found = await searcher.search(value, {
+                caseSensitive,
+                isRegex,
+                limit: MAX_RESULTS,
+                priority: installs,
+                signal: controller.signal,
+                onProgress: snapshot => {
+                    if (request !== entry.request || Date.now() - entry.lastRender < RENDER_INTERVAL_MS) return;
+                    applyResults(entry, snapshot());
+                    renderEntry(entry);
+                }
+            });
+            if (request !== entry.request) return;
+            entry.searching = false;
+            applyResults(entry, found);
             renderEntry(entry);
             saveQueries();
+            startPrefetch();
         } catch (error) {
             if (request !== entry.request) return;
-            entry.results = [];
+            entry.searching = false;
+            applyResults(entry, { results: [], lineCount: 0, plugins: [] });
             entry.error.textContent = error.message;
             entry.error.hidden = false;
             renderEntry(entry);
         }
+    }
+
+    function startPrefetch() {
+        if (prefetchStarted) return;
+        prefetchStarted = true;
+        searcher.prefetch((done, total) => {
+            updatedElement.textContent = done < total
+                ? ` | Downloading index for instant searches: ${Math.floor(done / total * 100)}%`
+                : ' | Index downloaded: searches no longer need the network';
+        });
     }
 
     async function loadInstallCounts() {
@@ -274,11 +319,19 @@
         return counts;
     }
 
-    function restoreQueries() {
+    function decodeHashText(text) {
         try {
-            if (location.hash.startsWith('#search?str=')) {
-                return [decodeURIComponent(location.hash.slice('#search?str='.length))];
-            }
+            return decodeURIComponent(text);
+        } catch {
+            return text;
+        }
+    }
+
+    function restoreQueries() {
+        if (location.hash.startsWith('#search?str=')) {
+            return [decodeHashText(location.hash.slice('#search?str='.length))];
+        }
+        try {
             if (location.hash.length > 1) {
                 const decoded = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
                 if (Array.isArray(decoded) && decoded.every(value => typeof value === 'string')) return decoded;
@@ -289,26 +342,38 @@
         return [];
     }
 
-    async function loadIndex() {
-        searcher = new window.ReverseSearchBrowser.BrowserReverseSearcher(INDEX_URL.href);
+    function showQueries(queries) {
+        for (const entry of entriesElement.children) entry._searchEntry.abort?.abort();
+        entriesElement.replaceChildren();
+        for (const value of queries) createEntry(value);
+        if (!queries.length || queries[queries.length - 1].trim()) createEntry('');
+        saveQueries();
+    }
+
+    // Search boxes appear (and their searches start) right away; searches
+    // wait for the index manifest internally.
+    function start() {
         loadInstallCounts().then(counts => {
             installCounts = counts;
             for (const entry of entriesElement.children) renderEntry(entry._searchEntry);
         }).catch(error => console.warn('Install counts unavailable:', error));
-        try {
-            await searcher.load();
-            const restored = restoreQueries();
-            const queries = restored.length ? restored : ['Toa Keris Cam'];
-            for (const value of queries) createEntry(value);
-            if (!queries.length || queries[queries.length - 1].trim()) createEntry('');
-            saveQueries();
-        } catch (error) {
-            const entry = createEntry('');
+        const restored = restoreQueries();
+        showQueries(restored.length ? restored : ['Toa Keris Cam']);
+        indexReady.then(() => {
+            pluginCountElement.textContent = ` Currently ${searcher.manifest.plugins.length.toLocaleString()} plugins active.`;
+            const inputs = [...entriesElement.querySelectorAll('.search-input')];
+            if (inputs.every(input => !input.value.trim())) startPrefetch();
+        }).catch(error => {
+            const entry = entriesElement.firstElementChild._searchEntry;
             entry.error.textContent = `Unable to load search index: ${error.message}`;
             entry.error.hidden = false;
-        }
+        });
     }
 
+    window.addEventListener('hashchange', () => {
+        const restored = restoreQueries();
+        if (restored.length) showQueries(restored);
+    });
     regexElement.addEventListener('change', () => {
         isRegex = regexElement.checked;
         for (const entry of entriesElement.children) performSearch(entry._searchEntry);
@@ -317,6 +382,6 @@
         caseSensitive = caseSensitiveElement.checked;
         for (const entry of entriesElement.children) performSearch(entry._searchEntry);
     });
-    window.addEventListener('load', loadIndex, { once: true });
+    start();
 
 })();
