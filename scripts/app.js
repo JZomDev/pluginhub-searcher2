@@ -155,7 +155,7 @@
         lineCount.addEventListener('click', () => toggleDisclosure(entry, 'lines'));
         lineCount.addEventListener('keydown', event => disclosureKeydown(event, entry, 'lines'));
 
-        if (initialQuery) performSearch(entry);
+        entry.initialSearch = initialQuery ? performSearch(entry) : Promise.resolve();
         return entry;
     }
 
@@ -286,7 +286,6 @@
             applyResults(entry, found);
             renderEntry(entry);
             saveQueries();
-            startPrefetch();
         } catch (error) {
             if (request !== entry.request) return;
             entry.searching = false;
@@ -359,10 +358,11 @@
         }).catch(error => console.warn('Install counts unavailable:', error));
         const restored = restoreQueries();
         showQueries(restored.length ? restored : ['Toa Keris Cam']);
+        const initialSearches = [...entriesElement.children].map(element => element._searchEntry.initialSearch);
+        // The rest of the index downloads only after the page's own queries finish.
         indexReady.then(() => {
             pluginCountElement.textContent = ` Currently ${searcher.manifest.plugins.length.toLocaleString()} plugins active.`;
-            const inputs = [...entriesElement.querySelectorAll('.search-input')];
-            if (inputs.every(input => !input.value.trim())) startPrefetch();
+            return Promise.allSettled(initialSearches).then(startPrefetch);
         }).catch(error => {
             const entry = entriesElement.firstElementChild._searchEntry;
             indexStatusElement.textContent = 'Index failed to load';
