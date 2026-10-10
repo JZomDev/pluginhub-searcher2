@@ -175,8 +175,12 @@
                 throw new Error(`Could not fetch index shard: HTTP ${response.status}`);
             }
 
+            // Content-Length is the encoded size when the server compresses the shard
+            // (GitHub Pages gzips it), so only trust it for uncompressed responses.
             const contentLength = response.headers.get('Content-Length');
-            if (contentLength !== null && Number(contentLength) !== expectedSize) {
+            const contentEncoding = response.headers.get('Content-Encoding');
+            if (contentLength !== null && (!contentEncoding || contentEncoding === 'identity') &&
+                Number(contentLength) !== expectedSize) {
                 throw new Error('Server returned an invalid index shard size');
             }
             if (!response.body) {
