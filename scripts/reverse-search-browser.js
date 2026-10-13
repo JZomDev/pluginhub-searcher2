@@ -1,6 +1,19 @@
 (function (root) {
     'use strict';
 
+    const isNode = typeof module !== 'undefined' && module.exports;
+    const ScanCore = isNode ? require('./scan-core.js') : root.ScanCore;
+    const { IndexCache } = isNode ? require('./index-cache.js') : root;
+    const { ScanPool } = isNode ? require('./scan-pool.js') : root;
+    // Captured while this script runs; the scan worker is loaded from beside it.
+    const SCRIPT_URL = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : null;
+    const MAX_SCAN_WORKERS = 4;
+
+    function defaultCreateWorker() {
+        if (!SCRIPT_URL || typeof root.Worker !== 'function' || typeof root.DecompressionStream !== 'function') return null;
+        return () => new root.Worker(new URL('scan-worker.js', SCRIPT_URL));
+    }
+
     // Must match build_reverse_index.py.
     const FORMAT_VERSION = 2;
     const FETCH_CONCURRENCY = 12;
@@ -9,9 +22,9 @@
     // refuse them under parallel load) and 5xx responses are retried for ~7s,
     // so a search only fails for a real error, never for a slow file.
     const FETCH_RETRY_DELAYS_MS = [100, 400, 1000, 2000, 3500];
-    // Decoded chunks are re-created from the compressed copies kept in memory.
-    const CHUNK_CACHE_CHARS = 64 * 1024 * 1024;
     const SHARD_CACHE_ENTRIES = 256;
+    // Partial results are reported at most this often while a search runs.
+    const PROGRESS_INTERVAL_MS = 200;
     const textEncoder = new TextEncoder();
     const textDecoder = new TextDecoder();
 
@@ -147,19 +160,6 @@
         return output.subarray(0, size);
     }
 
-    function splitLines(source) {
-        if (!source.length) return [];
-        const lines = source.split(/\r\n|\n|\r/);
-        if (/(?:\r\n|\n|\r)$/.test(source)) lines.pop();
-        return lines;
-    }
-
-    async function gunzip(bytes) {
-        if (typeof DecompressionStream !== 'function') throw new Error('This browser does not support gzip decompression');
-        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-        return new Uint8Array(await new Response(stream).arrayBuffer());
-    }
-
     async function mapConcurrent(items, limit, worker, shouldStop = () => false) {
         let next = 0;
         const run = async () => {
@@ -176,17 +176,28 @@
     }
 
     class BrowserReverseSearcher {
-        constructor(indexUrl, fetchFunction = root.fetch.bind(root)) {
+        // options.cacheStorage: CacheStorage for the persistent cache (default: the
+        // browser's `caches`; null turns it off). options.createWorker: () => a
+        // Worker running scan-worker.js (default: a real Worker where supported;
+        // null scans in-thread). options.poolSize: how many workers.
+        constructor(indexUrl, fetchFunction = root.fetch.bind(root), options = {}) {
             this.baseUrl = String(indexUrl).replace(/\/?$/, '/');
             this.fetch = fetchFunction;
             this.manifest = null;
             this.compressed = new Map();
+            // Names of index files downloaded so far, by searches or prefetch.
+            this.loadedFiles = new Set();
             this.shardCache = new Map();
-            this.chunkCache = new Map();
-            this.chunkCacheChars = 0;
             this.activeSearches = 0;
             this.idle = Promise.resolve();
             this.prefetching = null;
+            this.prefetchStatus = null;
+            const cacheStorage = 'cacheStorage' in options ? options.cacheStorage : root.caches;
+            this.cache = cacheStorage ? new IndexCache(cacheStorage) : null;
+            const createWorker = 'createWorker' in options ? options.createWorker : defaultCreateWorker();
+            const poolSize = options.poolSize ??
+                Math.max(1, Math.min(MAX_SCAN_WORKERS, (root.navigator?.hardwareConcurrency || 2) - 1));
+            this.pool = createWorker ? new ScanPool(createWorker, poolSize, ScanCore.scanBytes) : null;
         }
 
         async _fetchBytes(path, init) {
@@ -207,22 +218,40 @@
             }
         }
 
+        _fileUrl(name) {
+            return new URL(`${name}?v=${this.manifest.build}`, this.baseUrl).href;
+        }
+
         // Compressed index files are kept for the whole session (~95 MB when
         // fully prefetched), so repeat lookups never touch the network.
         _compressed(name) {
             if (!this.compressed.has(name)) {
-                const promise = this._fetchBytes(`${name}?v=${this.manifest.build}`);
-                promise.catch(() => this.compressed.delete(name));
+                const promise = this._download(name);
+                promise.then(() => {
+                    this.loadedFiles.add(name);
+                    this.prefetchStatus?.report();
+                }, () => this.compressed.delete(name));
                 this.compressed.set(name, promise);
             }
             return this.compressed.get(name);
         }
 
+        // An index file from the persistent cache, else from the network (then cached).
+        async _download(name) {
+            const url = this._fileUrl(name);
+            const cached = this.cache ? await this.cache.get(url) : null;
+            if (cached) return cached;
+            const bytes = await this._fetchBytes(url);
+            if (this.cache) this.cache.put(url, bytes);
+            return bytes;
+        }
+
         async load() {
-            const bytes = await gunzip(await this._fetchBytes('manifest.bin', { cache: 'no-cache' }));
+            const bytes = await ScanCore.gunzip(await this._fetchBytes('manifest.bin', { cache: 'no-cache' }));
             const manifest = JSON.parse(textDecoder.decode(bytes));
             if (manifest.version !== FORMAT_VERSION) throw new Error('Unsupported search index version');
             this.manifest = manifest;
+            if (this.cache) await this.cache.open(manifest.build);
             this.chunkEnds = [...manifest.chunks.slice(1), manifest.fileCount];
             return manifest.fileCount;
         }
@@ -235,7 +264,8 @@
                 return cached;
             }
             {
-                const promise = this._compressed(indexFileName('shards', index)).then(gunzip).then(bytes => {
+                const promise = this._decoded(indexFileName('shards', index), async compressed => {
+                    const bytes = await ScanCore.gunzip(compressed);
                     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
                     const gramCount = view.getUint32(0, true);
                     const entries = new Map();
@@ -255,34 +285,12 @@
             }
         }
 
-        _chunk(index) {
-            const cached = this.chunkCache.get(index);
-            if (cached) {
-                this.chunkCache.delete(index);
-                this.chunkCache.set(index, cached);
-                return cached.promise;
-            }
-            const entry = { size: 0, promise: null };
-            entry.promise = this._compressed(indexFileName('chunks', index)).then(gunzip).then(bytes => {
-                entry.size = bytes.length;
-                this.chunkCacheChars += bytes.length;
-                for (const [key, old] of this.chunkCache) {
-                    if (this.chunkCacheChars <= CHUNK_CACHE_CHARS || old === entry) break;
-                    this.chunkCache.delete(key);
-                    this.chunkCacheChars -= old.size;
-                }
-                return JSON.parse(textDecoder.decode(bytes));
-            });
-            entry.promise.catch(() => {
-                this.chunkCache.delete(index);
-                this.chunkCacheChars -= entry.size;
-            });
-            this.chunkCache.set(index, entry);
-            return entry.promise;
-        }
-
         // Downloads every shard, then every chunk, in the background. Pauses
         // while a search is running so it never competes for bandwidth.
+        // onProgress(done, total, failed, paused) is called when it starts,
+        // whenever any index file finishes downloading (searches included, so
+        // `done` counts files a search already fetched), whenever it pauses for
+        // or resumes after searches, and once more with done === total at the end.
         prefetch(onProgress = () => {}) {
             if (!this.prefetching) {
                 const { shardCount, chunks } = this.manifest;
@@ -290,20 +298,40 @@
                     ...Array.from({ length: shardCount }, (_, index) => indexFileName('shards', index)),
                     ...chunks.map((_, index) => indexFileName('chunks', index))
                 ];
-                let done = 0;
-                let failed = 0;
+                // Capped below total until every file has been tried, so 100% always
+                // means the download is over.
+                const done = () => status.finished ? names.length : Math.min(this.loadedFiles.size, names.length - 1);
+                let reportedFinish = false;
+                const status = this.prefetchStatus = {
+                    finished: false,
+                    failed: 0,
+                    report: () => {
+                        if (reportedFinish) return;
+                        reportedFinish = status.finished;
+                        onProgress(done(), names.length, status.failed, !status.finished && this.activeSearches > 0);
+                    }
+                };
+                status.report();
                 this.prefetching = mapConcurrent(names, PREFETCH_CONCURRENCY, async name => {
                     while (this.activeSearches) await this.idle;
                     try {
                         await this._compressed(name);
                     } catch (error) {
-                        failed++;
+                        status.failed++;
                         console.warn(`Prefetch of ${name} failed:`, error);
+                        status.report();
                     }
-                    onProgress(++done, names.length, failed);
+                }).then(() => {
+                    status.finished = true;
+                    status.report();
                 });
             }
             return this.prefetching;
+        }
+
+        _prefetchPauseChanged() {
+            const status = this.prefetchStatus;
+            if (status && !status.finished) status.report();
         }
 
         // Sorted candidate file ids, or null when every file must be scanned.
@@ -326,17 +354,53 @@
             return candidates;
         }
 
+        // Runs decode(bytes) on a downloaded index file. A file that fails to decode
+        // is dropped and downloaded once more before the error is passed on.
+        async _decoded(name, decode) {
+            for (let attempt = 0; ; attempt++) {
+                const bytes = await this._compressed(name);
+                try {
+                    return await decode(bytes);
+                } catch (error) {
+                    if (attempt > 0) throw error;
+                    await this._evict(name);
+                }
+            }
+        }
+
+        _scanChunk(chunk, fileIds, query) {
+            const task = { first: this.manifest.chunks[chunk], fileIds, query };
+            return this._decoded(indexFileName('chunks', chunk), bytes => this._scan({ ...task, bytes }));
+        }
+
+        _scan(task) {
+            return this.pool ? this.pool.scan(task) : ScanCore.scanBytes(task);
+        }
+
+        async _evict(name) {
+            this.compressed.delete(name);
+            if (this.cache) await this.cache.delete(this._fileUrl(name));
+        }
+
         // Returns { results, lineCount, plugins }. Every match is counted, but
         // only options.limit lines are kept (highest options.priority(plugin)
         // first), so huge result sets never exhaust memory. plugins lists every
         // matching plugin with its line count. options.signal cancels the search.
+        // options.onProgress receives the results so far, plus `scanned` and
+        // `total` text chunks, every PROGRESS_INTERVAL_MS until the search ends.
         async search(query, options = {}) {
             if (!this.manifest) throw new Error('Search index is not loaded');
-            if (this.activeSearches++ === 0) this.idle = new Promise(resolve => { this.resolveIdle = resolve; });
+            if (this.activeSearches++ === 0) {
+                this.idle = new Promise(resolve => { this.resolveIdle = resolve; });
+                this._prefetchPauseChanged();
+            }
             try {
                 return await this._search(query, options);
             } finally {
-                if (--this.activeSearches === 0) this.resolveIdle();
+                if (--this.activeSearches === 0) {
+                    this.resolveIdle();
+                    this._prefetchPauseChanged();
+                }
             }
         }
 
@@ -345,8 +409,8 @@
             const onProgress = options.onProgress || (() => {});
             const caseSensitive = options.caseSensitive === true;
             const isRegex = options.isRegex === true;
-            const pattern = isRegex ? new RegExp(query, caseSensitive ? '' : 'i') : null;
-            const needle = caseSensitive ? query : query.toLowerCase();
+            // An invalid pattern throws here, before anything downloads.
+            if (isRegex) new RegExp(query, caseSensitive ? '' : 'i');
             const literals = isRegex ? requiredRegexLiterals(query) : [query];
             const candidates = literals ? await this._candidates(literals) : null;
             signal?.throwIfAborted();
@@ -367,50 +431,47 @@
 
             const limit = options.limit ?? Infinity;
             const priority = options.priority || (() => 0);
-            const compare = (left, right) => right.priority - left.priority || left.fileId - right.fileId || left.line - right.line;
-            let kept = [];
+            // Plain data only: it is copied to scan workers.
+            const scanQuery = {
+                needle: query,
+                caseSensitive,
+                isRegex,
+                limit,
+                literals: isRegex ? literals : null,
+                ranks: plugins.map(([plugin]) => Number(priority(plugin)) || 0)
+            };
+            const kept = [];
             let lineCount = 0;
             const pluginLines = new Map();
             const snapshot = () => {
-                kept.sort(compare);
-                if (kept.length > limit) kept.length = limit;
+                ScanCore.keepTop(kept, limit);
                 const matched = [...pluginLines].map(([pluginIndex, lines]) => {
                     const [plugin, repository, commit] = plugins[pluginIndex];
                     return { plugin, repository, commit, lines };
                 });
-                return { results: kept.map(({ fileId, priority, ...result }) => result), lineCount, plugins: matched };
+                const results = kept.map(({ pluginIndex, filePath, line, content }) => {
+                    const [plugin, repository, commit] = plugins[pluginIndex];
+                    return { plugin, repository, commit, filePath, line, content };
+                });
+                return { results, lineCount, plugins: matched };
             };
 
+            let scanned = 0;
+            let lastReport = 0;
             await mapConcurrent([...wanted], FETCH_CONCURRENCY, async ([chunk, fileIds]) => {
-                const files = await this._chunk(chunk);
+                const part = await this._scanChunk(chunk, fileIds, scanQuery);
                 if (signal?.aborted) return;
-                const first = chunks[chunk];
-                const ids = fileIds || files.map((_, index) => first + index);
-                for (const fileId of ids) {
-                    const [pluginIndex, filePath, content] = files[fileId - first];
-                    const searchable = caseSensitive ? content : content.toLowerCase();
-                    if (!pattern && !searchable.includes(needle)) continue;
-                    const lines = splitLines(content);
-                    const [plugin, repository, commit] = plugins[pluginIndex];
-                    const rank = Number(priority(plugin)) || 0;
-                    let fileMatches = 0;
-                    for (let index = 0; index < lines.length; index++) {
-                        const line = lines[index];
-                        const matches = pattern
-                            ? pattern.test(line)
-                            : (caseSensitive ? line : line.toLowerCase()).includes(needle);
-                        if (!matches) continue;
-                        fileMatches++;
-                        kept.push({ fileId, priority: rank, plugin, repository, commit, filePath, line: index + 1, content: line });
-                        if (kept.length >= 2 * limit + 1024) {
-                            kept.sort(compare);
-                            kept.length = limit;
-                        }
-                    }
-                    if (fileMatches) {
-                        lineCount += fileMatches;
-                        pluginLines.set(pluginIndex, (pluginLines.get(pluginIndex) || 0) + fileMatches);
-                    }
+                for (const match of part.matches) kept.push(match);
+                if (kept.length >= 2 * limit + 1024) ScanCore.keepTop(kept, limit);
+                lineCount += part.lineCount;
+                for (const [pluginIndex, lines] of part.pluginLines) {
+                    pluginLines.set(pluginIndex, (pluginLines.get(pluginIndex) || 0) + lines);
+                }
+                scanned++;
+                const now = Date.now();
+                if (scanned < wanted.size && now - lastReport >= PROGRESS_INTERVAL_MS) {
+                    lastReport = now;
+                    onProgress({ ...snapshot(), scanned, total: wanted.size });
                 }
             }, () => signal?.aborted);
             signal?.throwIfAborted();
